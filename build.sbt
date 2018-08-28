@@ -1,17 +1,46 @@
-val Http4sVersion  = "0.18.16"
-val Specs2Version  = "4.2.0"
-val LogbackVersion = "1.2.3"
+val macroParadise    = ("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)
+val kindProjector    = "org.spire-math" %% "kind-projector" % "0.9.7"
+val betterMonadicFor = "com.olegpy" %% "better-monadic-for" % "0.2.4"
+
+val plugins = List(macroParadise, kindProjector, betterMonadicFor)
+
+val logback = "ch.qos.logback" % "logback-classic" % "1.2.3"
+
+val http4s = Seq(
+  "org.http4s" %% "http4s-blaze-server" % "0.18.16",
+  "org.http4s" %% "http4s-circe"        % "0.18.16",
+  "org.http4s" %% "http4s-dsl"          % "0.18.16"
+)
+
+val cats =
+  Seq(
+    "org.typelevel"     %% "cats-core"      % "1.2.0",
+    "io.chrisdavenport" %% "linebacker"     % "0.1.0",
+    "io.chrisdavenport" %% "cats-par"       % "0.2.0",
+    "org.typelevel"     %% "cats-effect"    % "0.10.1",
+    "io.chrisdavenport" %% "log4cats-slf4j" % "0.1.0"
+  )
+
+val doobie = Seq(
+  "org.tpolecat" %% "doobie-core"      % "0.5.3",
+  "org.tpolecat" %% "doobie-postgres"  % "0.5.3",
+  "org.tpolecat" %% "doobie-hikari"    % "0.5.3",
+  "org.tpolecat" %% "doobie-scalatest" % "0.5.3"
+)
+
+val chimney = "io.scalaland" %% "chimney" % "0.2.1"
+
+val tsec =
+  Seq(
+    "io.github.jmcardon" %% "tsec-jwt-mac"  % "0.0.1-M11",
+    "io.github.jmcardon" %% "tsec-password" % "0.0.1-M11"
+  )
 
 lazy val root = (project in file(".")).settings(
   organization := "org.typelevel",
   name := "brick-store",
   version := "0.0.1-SNAPSHOT",
   scalaVersion := "2.12.6",
-  libraryDependencies ++= Seq(
-    "org.http4s"     %% "http4s-blaze-server" % Http4sVersion,
-    "org.http4s"     %% "http4s-circe"        % Http4sVersion,
-    "org.http4s"     %% "http4s-dsl"          % Http4sVersion,
-    "org.specs2"     %% "specs2-core"         % Specs2Version % "test",
-    "ch.qos.logback" % "logback-classic"      % LogbackVersion
-  )
+  scalacOptions ++= Seq("-Ypartial-unification"),
+  libraryDependencies ++= plugins.map(compilerPlugin) ++ http4s ++ doobie ++ tsec ++ Seq(logback, chimney)
 )
