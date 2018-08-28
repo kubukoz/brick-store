@@ -10,7 +10,8 @@ val http4s = Seq(
   "org.http4s" %% "http4s-blaze-server" % "0.18.16",
   "org.http4s" %% "http4s-circe"        % "0.18.16",
   "org.http4s" %% "http4s-dsl"          % "0.18.16",
-  "io.circe"   %% "circe-derivation"    % "0.9.0-M5" % Compile
+  "io.circe"   %% "circe-derivation"    % "0.9.0-M5" % Compile,
+  "io.circe"   %% "circe-fs2"           % "0.9.0"
 )
 
 val cats =

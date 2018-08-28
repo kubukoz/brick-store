@@ -1,4 +1,5 @@
 package org.typelevel.brickstore.entity
+
 import enumeratum.Circe._
 import enumeratum.EnumEntry.LowerCamelcase
 import enumeratum._
