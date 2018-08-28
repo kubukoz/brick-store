@@ -18,7 +18,7 @@ class BricksController[F[_]: Sync](bricksService: BricksService[F]) extends Http
       case req @ POST -> Root / "import" =>
         val bodyBricks: Stream[F, BrickToCreate] = req.body.through(decodeByteStream[BrickToCreate])
 
-        val results = bodyBricks.through(bricksService.createAll)
+        val results = bodyBricks.through(bricksService.createEach)
 
         Accepted.apply(results.map(_.asJson.noSpaces).intersperse("\n"), `Content-Type`(`application/json`))
     }

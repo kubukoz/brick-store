@@ -3,18 +3,17 @@ package org.typelevel.brickstore
 import cats.effect.{Effect, IO}
 import cats.implicits._
 import doobie.hikari.HikariTransactor
-import doobie.util.transactor.Transactor
+import fs2.Stream.{eval => SE}
 import fs2.{Stream, StreamApp}
-import Stream.{eval => SE}
 import org.flywaydb.core.Flyway
+import org.http4s
+import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeBuilder
 import org.typelevel.brickstore.config.DbConfig
 import org.typelevel.brickstore.module.{MainModule, Module}
 
 class Application[F[_]](implicit F: Effect[F]) extends StreamApp[F] {
   private val configF: F[DbConfig] = pureconfig.module.catseffect.loadConfigF[F, DbConfig]("db")
-
-  private def buildModule(transactor: Transactor[F]): Module[F] = new MainModule(transactor)
 
   private def transactorStream(config: DbConfig): Stream[F, HikariTransactor[F]] =
     HikariTransactor.stream("org.postgresql.Driver", config.jdbcUrl, config.user, config.password)
@@ -28,14 +27,21 @@ class Application[F[_]](implicit F: Effect[F]) extends StreamApp[F] {
       flyway.migrate()
     }.void
 
+  private def mergeServices(module: Module[F]): http4s.HttpService[F] = {
+    Router(
+      "/bricks" -> module.bricksController.service,
+      "/cart"   -> module.cartController.service
+    )
+  }
+
   def stream(args: List[String], requestShutdown: F[Unit]): Stream[F, StreamApp.ExitCode] =
     for {
       config     <- SE(configF)
       transactor <- transactorStream(config)
       _          <- SE(runMigrations(config))
 
-      module = buildModule(transactor)
-      server = BlazeBuilder[F].bindHttp().mountService(module.bricksController.service, "/")
+      module <- SE(MainModule.make(transactor))
+      server = BlazeBuilder[F].bindHttp().mountService(mergeServices(module))
 
       exitCode <- server.serve
     } yield exitCode

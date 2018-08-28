@@ -11,7 +11,7 @@ import org.typelevel.brickstore.utilz._
 
 trait BricksService[F[_]] {
   type LineNumber = Long
-  val createAll: Pipe[F, BrickToCreate, ImportResultNel[BrickValidationError, BrickId]]
+  val createEach: Pipe[F, BrickToCreate, ImportResultNel[BrickValidationError, BrickId]]
 }
 
 class BricksServiceImpl[F[_]: Applicative, CIO[_]](repository: BricksRepository[F, CIO]) extends BricksService[F] {
@@ -21,7 +21,7 @@ class BricksServiceImpl[F[_]: Applicative, CIO[_]](repository: BricksRepository[
       .cond(brickToCreate.name.length <= 20, brickToCreate.transformInto[Brick], BrickValidationError.NameTooLong)
       .toEitherNel
 
-  override val createAll: Pipe[F, BrickToCreate, ImportResultNel[BrickValidationError, BrickId]] =
+  override val createEach: Pipe[F, BrickToCreate, ImportResultNel[BrickValidationError, BrickId]] =
     _.map(validate).zipWithIndex.map {
       case (validated, index) =>
         val lineNumber: LineNumber = index + 1
