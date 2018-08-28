@@ -22,10 +22,11 @@ val cats =
   )
 
 val doobie = Seq(
-  "org.tpolecat" %% "doobie-core"      % "0.5.3",
-  "org.tpolecat" %% "doobie-postgres"  % "0.5.3",
-  "org.tpolecat" %% "doobie-hikari"    % "0.5.3",
-  "org.tpolecat" %% "doobie-scalatest" % "0.5.3"
+  "org.tpolecat"   %% "doobie-core"      % "0.5.3",
+  "org.tpolecat"   %% "doobie-postgres"  % "0.5.3",
+  "org.tpolecat"   %% "doobie-hikari"    % "0.5.3",
+  "org.tpolecat"   %% "doobie-scalatest" % "0.5.3",
+  "org.postgresql" % "postgresql"        % "42.2.4"
 )
 
 val chimney = "io.scalaland" %% "chimney" % "0.2.1"
@@ -36,11 +37,17 @@ val tsec =
     "io.github.jmcardon" %% "tsec-password" % "0.0.1-M11"
   )
 
+val macwire = Seq(
+  "com.softwaremill.macwire" %% "macros" % "2.3.1" % Provided,
+  "com.softwaremill.macwire" %% "util"   % "2.3.1",
+  "com.softwaremill.macwire" %% "proxy"  % "2.3.1"
+)
+
 lazy val root = (project in file(".")).settings(
   organization := "org.typelevel",
   name := "brick-store",
   version := "0.0.1-SNAPSHOT",
   scalaVersion := "2.12.6",
-  scalacOptions ++= Seq("-Ypartial-unification"),
-  libraryDependencies ++= plugins.map(compilerPlugin) ++ http4s ++ doobie ++ tsec ++ Seq(logback, chimney)
+  scalacOptions ++= Options.flags,
+  libraryDependencies ++= plugins.map(compilerPlugin) ++ http4s ++ doobie ++ tsec ++ macwire ++ Seq(logback, chimney)
 )
