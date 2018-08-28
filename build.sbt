@@ -9,7 +9,8 @@ val logback = "ch.qos.logback" % "logback-classic" % "1.2.3"
 val http4s = Seq(
   "org.http4s" %% "http4s-blaze-server" % "0.18.16",
   "org.http4s" %% "http4s-circe"        % "0.18.16",
-  "org.http4s" %% "http4s-dsl"          % "0.18.16"
+  "org.http4s" %% "http4s-dsl"          % "0.18.16",
+  "io.circe"   %% "circe-derivation"    % "0.9.0-M5" % Compile
 )
 
 val cats =
@@ -26,7 +27,8 @@ val doobie = Seq(
   "org.tpolecat"   %% "doobie-postgres"  % "0.5.3",
   "org.tpolecat"   %% "doobie-hikari"    % "0.5.3",
   "org.tpolecat"   %% "doobie-scalatest" % "0.5.3",
-  "org.postgresql" % "postgresql"        % "42.2.4"
+  "org.postgresql" % "postgresql"        % "42.2.4",
+  "org.flywaydb"   % "flyway-core"       % "5.1.4"
 )
 
 val chimney = "io.scalaland" %% "chimney" % "0.2.1"
