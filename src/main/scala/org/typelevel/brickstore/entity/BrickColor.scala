@@ -19,7 +19,7 @@ object BrickColor extends Enum[BrickColor] {
   case object Gray   extends BrickColor
   case object Pink   extends BrickColor
 
-  override def values: immutable.IndexedSeq[BrickColor] = findValues
+  override val values: immutable.IndexedSeq[BrickColor] = findValues
 
   implicit val bcCecoder: Decoder[BrickColor] = decoder(this)
   implicit val bcEncoder: Encoder[BrickColor] = encoder(this)
