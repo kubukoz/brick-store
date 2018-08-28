@@ -37,6 +37,15 @@ val tsec =
     "io.github.jmcardon" %% "tsec-password" % "0.0.1-M11"
   )
 
+val pureconfig = Seq(
+  "com.github.pureconfig" %% "pureconfig-cats-effect" % "0.9.2",
+  "com.github.pureconfig" %% "pureconfig-enumeratum"  % "0.9.2"
+)
+
+val enumeratum = Seq(
+  "com.beachape" %% "enumeratum-circe" % "1.5.13"
+)
+
 val macwire = Seq(
   "com.softwaremill.macwire" %% "macros" % "2.3.1" % Provided,
   "com.softwaremill.macwire" %% "util"   % "2.3.1",
@@ -49,5 +58,6 @@ lazy val root = (project in file(".")).settings(
   version := "0.0.1-SNAPSHOT",
   scalaVersion := "2.12.6",
   scalacOptions ++= Options.flags,
-  libraryDependencies ++= plugins.map(compilerPlugin) ++ http4s ++ doobie ++ tsec ++ macwire ++ Seq(logback, chimney)
+  libraryDependencies ++= plugins
+    .map(compilerPlugin) ++ http4s ++ doobie ++ tsec ++ macwire ++ enumeratum ++ pureconfig ++ Seq(logback, chimney)
 )
