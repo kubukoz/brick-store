@@ -1,5 +1,6 @@
 package org.typelevel.brickstore.entity
 
+import doobie.util.meta.Meta
 import enumeratum.Circe._
 import enumeratum.EnumEntry.LowerCamelcase
 import enumeratum._
@@ -22,4 +23,7 @@ object BrickColor extends Enum[BrickColor] {
 
   implicit val bcCecoder: Decoder[BrickColor] = decoder(this)
   implicit val bcEncoder: Encoder[BrickColor] = encoder(this)
+
+  import doobie.postgres.implicits._
+  implicit val meta: Meta[BrickColor] = pgEnumStringOpt("brick_color", withNameOption, _.entryName)
 }
