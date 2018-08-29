@@ -28,9 +28,12 @@ class CartController[F[_]: Sync](cart: CartService[F], authenticated: RequestAut
     AuthedService {
       case (req @ POST -> Root / "add") as auth =>
         for {
-          body     <- req.decodeJson[CartAddRequest]
-          result   <- cart.add(body.brickId)(auth)
-          response <- result.fold(UnprocessableEntity("Brick not found"))(_ => Ok())
+          body  <- req.decodeJson[CartAddRequest]
+          added <- cart.add(body.brickId)(auth)
+          response <- {
+            if (added) Ok()
+            else UnprocessableEntity("Brick not found")
+          }
         } yield response
 
       case GET -> Root as auth =>

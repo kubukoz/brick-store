@@ -6,9 +6,9 @@ import doobie.free.connection.ConnectionIO
 import doobie.util.transactor.Transactor
 import org.typelevel.brickstore.InMemoryCartService.MapRef
 import org.typelevel.brickstore._
-import org.typelevel.brickstore.entity.{Brick, UserId}
+import org.typelevel.brickstore.entity.{BrickId, UserId}
 
-class MainModule[F[_]: Sync] private (transactor: Transactor[F], cartRef: MapRef[F, UserId, Set[Brick]])
+class MainModule[F[_]: Sync] private (transactor: Transactor[F], cartRef: MapRef[F, UserId, Set[BrickId]])
     extends Module[F] {
   import com.softwaremill.macwire._
   private type CIO[A] = ConnectionIO[A]
