@@ -2,6 +2,7 @@ package org.typelevel.brickstore
 
 import cats.effect.{Effect, IO}
 import cats.implicits._
+import cats.temp.par.Par
 import doobie.hikari.HikariTransactor
 import fs2.Stream.{eval => SE}
 import fs2.{Stream, StreamApp}
@@ -12,7 +13,7 @@ import org.http4s.server.blaze.BlazeBuilder
 import org.typelevel.brickstore.config.DbConfig
 import org.typelevel.brickstore.module.{MainModule, Module}
 
-class Application[F[_]](implicit F: Effect[F]) extends StreamApp[F] {
+class Application[F[_]: Par](implicit F: Effect[F]) extends StreamApp[F] {
   private val configF: F[DbConfig] = pureconfig.module.catseffect.loadConfigF[F, DbConfig]("db")
 
   private def transactorStream(config: DbConfig): Stream[F, HikariTransactor[F]] =
@@ -30,7 +31,8 @@ class Application[F[_]](implicit F: Effect[F]) extends StreamApp[F] {
   private def mergeServices(module: Module[F]): http4s.HttpService[F] = {
     Router(
       "/bricks" -> module.bricksController.service,
-      "/cart"   -> module.cartController.service
+      "/cart"   -> module.cartController.service,
+      "/order"  -> module.orderController.service
     )
   }
 

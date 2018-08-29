@@ -6,13 +6,3 @@ CREATE TABLE bricks (
   price BIGINT NOT NULL,
   color brick_color NOT NULL
 );
-
-CREATE TABLE brick_order(
-  id BIGSERIAL PRIMARY KEY
-);
-
-CREATE TABLE order_line (
-  brick_id BIGINT references bricks,
-  quantity INT,
-  order_id BIGINT references brick_order
-)

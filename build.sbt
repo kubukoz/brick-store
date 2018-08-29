@@ -62,5 +62,6 @@ lazy val root = (project in file(".")).settings(
   scalaVersion := "2.12.6",
   scalacOptions ++= Options.flags,
   libraryDependencies ++= plugins
-    .map(compilerPlugin) ++ http4s ++ doobie ++ tsec ++ macwire ++ enumeratum ++ pureconfig ++ Seq(logback, chimney)
+    .map(compilerPlugin) ++ http4s ++ doobie ++ cats ++ tsec ++ macwire ++ enumeratum ++ pureconfig ++ Seq(logback,
+                                                                                                           chimney)
 )
