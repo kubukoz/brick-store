@@ -17,8 +17,8 @@ object BrickToCreate {
 sealed trait BrickValidationError extends EnumEntry
 
 object BrickValidationError extends Enum[BrickValidationError] {
-  case object NameTooLong   extends BrickValidationError
-  case object NegativePrice extends BrickValidationError
+  case object NameTooLong      extends BrickValidationError
+  case object PriceNotPositive extends BrickValidationError
 
   override val values: immutable.IndexedSeq[BrickValidationError] = findValues
   implicit val encoderBVE: Encoder[BrickValidationError]          = encoder(this)

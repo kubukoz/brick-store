@@ -1,9 +1,9 @@
 package org.typelevel.brickstore
+
 import cats.Applicative
 import cats.data.EitherNel
 import cats.implicits._
 import fs2.Pipe
-import io.scalaland.chimney.dsl._
 import org.typelevel.brickstore.dto.ImportResult.ImportResultNel
 import org.typelevel.brickstore.dto.{BrickToCreate, BrickValidationError, ImportResult}
 import org.typelevel.brickstore.entity.{Brick, BrickId}
@@ -16,10 +16,19 @@ trait BricksService[F[_]] {
 
 class BricksServiceImpl[F[_]: Applicative, CIO[_]](repository: BricksRepository[F, CIO]) extends BricksService[F] {
 
-  private def validate(brickToCreate: BrickToCreate): EitherNel[BrickValidationError, Brick] =
-    Either
-      .cond(brickToCreate.name.length <= 20, brickToCreate.transformInto[Brick], BrickValidationError.NameTooLong)
-      .toEitherNel
+  private def validate(brickToCreate: BrickToCreate): EitherNel[BrickValidationError, Brick] = {
+    val validateName =
+      brickToCreate.name
+        .asRight[BrickValidationError]
+        .ensure(BrickValidationError.NameTooLong)(_.length <= 20)
+        .toEitherNel
+
+    val validatePrice =
+      brickToCreate.price.asRight[BrickValidationError].ensure(BrickValidationError.PriceNotPositive)(_ > 0).toEitherNel
+
+    (validateName, validatePrice)
+      .parMapN(Brick(_, _, brickToCreate.color))
+  }
 
   override val createEach: Pipe[F, BrickToCreate, ImportResultNel[BrickValidationError, BrickId]] =
     _.map(validate).zipWithIndex.map {
