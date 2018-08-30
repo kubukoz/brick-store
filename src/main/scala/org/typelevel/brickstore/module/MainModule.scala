@@ -10,7 +10,7 @@ import fs2.async.mutable.Topic
 import org.typelevel.brickstore.InMemoryOrderRepository.OrdersRef
 import org.typelevel.brickstore._
 import org.typelevel.brickstore.auth.RequestAuthenticator
-import org.typelevel.brickstore.cart.CartServiceImpl.CartRef
+import org.typelevel.brickstore.cart.InMemoryCartRepository.CartRef
 import org.typelevel.brickstore.cart._
 import org.typelevel.brickstore.dto.OrderSummary
 import org.typelevel.brickstore.entity.{OrderId, UserId}
@@ -51,7 +51,7 @@ object MainModule {
 
   def make[F[_]: ConcurrentEffect: Par](transactor: Transactor[F])(implicit ec: ExecutionContext): F[Module[F]] =
     for {
-      cartRef       <- CartServiceImpl.makeRef[F]
+      cartRef       <- InMemoryCartRepository.makeRef[F]
       ordersRef     <- InMemoryOrderRepository.makeRef[F]
       newOrderTopic <- Topic[F, OrderSummary](OrderSummary(OrderId(0), UserId(0), 0))
     } yield new MainModule[F](transactor, cartRef, ordersRef, newOrderTopic)

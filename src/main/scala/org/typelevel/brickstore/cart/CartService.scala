@@ -1,19 +1,16 @@
 package org.typelevel.brickstore.cart
+
 import cats.data._
-import cats.effect.Sync
 import cats.implicits._
 import cats.mtl.FunctorLayer
 import cats.mtl.implicits._
 import cats.temp.par._
 import cats.{Monad, MonadError}
-import fs2.async.Ref
 import io.scalaland.chimney.dsl._
 import org.typelevel.brickstore.BricksRepository
 import org.typelevel.brickstore.dto.CartBrick
 import org.typelevel.brickstore.entity.{Brick, UserId}
 import org.typelevel.brickstore.util.either._
-
-import scala.collection.immutable
 
 trait CartService[F[_]] {
   val add: CartAddRequest => UserId => F[EitherNel[CartAddError, Unit]]
@@ -75,11 +72,4 @@ class CartServiceImpl[F[_]: Par: Monad, CIO[_]](cartRepository: CartRepository[F
   override def findLines(auth: UserId): F[Set[CartLine]] = cartRepository.findLines(auth)
 
   override def clear(auth: UserId): F[Unit] = cartRepository.clear(auth)
-}
-
-object CartServiceImpl {
-  type MapRef[F[_], K, V] = Ref[F, immutable.Map[K, V]]
-  type CartRef[F[_]]      = MapRef[F, UserId, Set[CartLine]]
-
-  def makeRef[F[_]: Sync]: F[CartRef[F]] = Ref(Map.empty)
 }
