@@ -7,7 +7,6 @@ import cats.implicits._
 import cats.temp.par._
 import io.scalaland.chimney.dsl._
 import fs2._
-import fs2.async.mutable.Topic
 import org.typelevel.brickstore.cart.{CartLine, CartService}
 import org.typelevel.brickstore.dto.OrderSummary
 import org.typelevel.brickstore.entity.{OrderId, OrderLine, UserId}
@@ -22,7 +21,7 @@ trait OrderService[F[_]] {
 
 class OrderServiceImpl[F[_]: Concurrent: Par](cartService: CartService[F],
                                               orderRepository: OrderRepository[F],
-                                              newOrderTopic: Topic[F, OrderSummary])
+                                              publishOrder: OrderSummary => F[Unit])
     extends OrderService[F] {
 
   override val streamExisting: Stream[F, OrderSummary] = orderRepository.streamExisting
@@ -37,7 +36,7 @@ class OrderServiceImpl[F[_]: Concurrent: Par](cartService: CartService[F],
 
   private def saveOrder(cartLines: NonEmptySet[CartLine])(auth: UserId): F[OrderId] = {
     def publishSummary(orderId: OrderId): F[Unit] = {
-      orderRepository.getSummary(orderId).flatMap(_.traverse_(newOrderTopic.publish1))
+      orderRepository.getSummary(orderId).flatMap(_.traverse_(publishOrder))
     }
 
     val createOrder: F[OrderId] =

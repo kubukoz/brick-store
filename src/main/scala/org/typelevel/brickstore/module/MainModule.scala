@@ -39,9 +39,11 @@ class MainModule[F[_]: Concurrent: Par] private (transactor: Transactor[F],
   override val cartController: CartController[F] = wire[CartController[F]]
 
   //order
-  private val orderRepository: OrderRepository[F]  = wire[InMemoryOrderRepository[F, CIO]]
-  private val orderService: OrderService[F]        = wire[OrderServiceImpl[F]]
-  override val orderController: OrderController[F] = wire[OrderController[F]]
+  private val orderRepository: OrderRepository[F] = wire[InMemoryOrderRepository[F, CIO]]
+
+  private val publishOrder: OrderSummary => F[Unit] = newOrderTopic.publish1
+  private val orderService: OrderService[F]         = wire[OrderServiceImpl[F]]
+  override val orderController: OrderController[F]  = wire[OrderController[F]]
 }
 
 object MainModule {
