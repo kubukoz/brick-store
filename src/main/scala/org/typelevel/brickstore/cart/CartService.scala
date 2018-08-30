@@ -3,19 +3,17 @@ import cats.data._
 import cats.effect.Sync
 import cats.implicits._
 import cats.mtl.FunctorLayer
-import cats.mtl.instances.all._
-import cats.temp.par.{parToParallel, Par}
+import cats.mtl.implicits._
+import cats.temp.par._
 import cats.{Monad, MonadError}
 import fs2.async.Ref
 import io.scalaland.chimney.dsl._
 import org.typelevel.brickstore.BricksRepository
-import org.typelevel.brickstore.cart.InMemoryCartService.CartRef
 import org.typelevel.brickstore.dto.CartBrick
-import org.typelevel.brickstore.entity.UserId
+import org.typelevel.brickstore.entity.{Brick, UserId}
 import org.typelevel.brickstore.util.either._
 
 import scala.collection.immutable
-import scala.collection.immutable.ListSet
 
 trait CartService[F[_]] {
   val add: CartAddRequest => UserId => F[EitherNel[CartAddError, Unit]]
@@ -25,20 +23,20 @@ trait CartService[F[_]] {
   def clear(auth: UserId): F[Unit]
 }
 
-class InMemoryCartService[F[_], CIO[_]](ref: CartRef[F], repository: BricksRepository[F, CIO])(implicit F: Monad[F],
-                                                                                               P: Par[F])
+class CartServiceImpl[F[_]: Par: Monad, CIO[_]](cartRepository: CartRepository[F],
+                                                brickRepository: BricksRepository[F, CIO])
     extends CartService[F] {
 
-  private def addToCart[G[_]](request: CartAddRequest)(auth: UserId)(implicit P: Par[G],
-                                                                     ME: MonadError[G, NonEmptyList[CartAddError]],
-                                                                     FL: FunctorLayer[G, F]): G[Unit] = {
+  override val add: CartAddRequest => UserId => F[EitherNel[CartAddError, Unit]] = req => {
+    auth => doAdd[EitherT[F, NonEmptyList[CartAddError], ?]](req)(auth).value
+  }
 
-    val cartLine = request.transformInto[CartLine]
-    val newElem  = Map(auth -> ListSet(cartLine))
-
+  private def doAdd[G[_]](request: CartAddRequest)(auth: UserId)(implicit P: Par[G],
+                                                                 ME: MonadError[G, NonEmptyList[CartAddError]],
+                                                                 FL: FunctorLayer[G, F]): G[Unit] = {
     //validations
     val brickExists: G[Unit] =
-      FL.layer(repository.findById(request.brickId))
+      FL.layer(brickRepository.findById(request.brickId))
         .map(_.toRight[CartAddError](CartAddError.BrickNotFound).toEitherNel)
         .rethrow
         .void
@@ -51,32 +49,35 @@ class InMemoryCartService[F[_], CIO[_]](ref: CartRef[F], repository: BricksRepos
         .liftTo[G]
         .void
 
-    val addToRef = FL.layer(ref.modify(_ |+| newElem))
+    val saveToCart: G[Unit] = FL.layer(cartRepository.saveToCart(request.transformInto[CartLine])(auth))
 
     (
       brickExists,
       quantityPositive
-    ).parTupled.void <* addToRef
+    ).parTupled.void <* saveToCart
   }
-
-  override val add: CartAddRequest => UserId => F[EitherNel[CartAddError, Unit]] = req =>
-    auth => addToCart[EitherT[F, NonEmptyList[CartAddError], ?]](req)(auth).value
 
   override def findBricks(auth: UserId): F[Set[CartBrick]] =
     findLines(auth).flatMap {
-      _.toList.parTraverse(findBrickAndConvert)
-    }.map(_.flatten.toSet)
+      _.toList
+        .parTraverse(findBrick)
+        .map(_.flatten.toSet)
+    }
 
-  private def findBrickAndConvert(line: CartLine): F[Option[CartBrick]] = {
-    repository.findById(line.brickId).map(_.map(_.into[CartBrick].withFieldConst(_.quantity, line.quantity).transform))
+  private def findBrick(line: CartLine): F[Option[CartBrick]] = {
+    val convert: Brick => CartBrick = _.into[CartBrick].withFieldConst(_.quantity, line.quantity).transform
+
+    brickRepository
+      .findById(line.brickId)
+      .map(_.map(convert))
   }
 
-  override def findLines(auth: UserId): F[Set[CartLine]] = ref.get.map(_.getOrElse(auth, Set.empty))
+  override def findLines(auth: UserId): F[Set[CartLine]] = cartRepository.findLines(auth)
 
-  override def clear(auth: UserId): F[Unit] = ref.modify(_ - auth).void
+  override def clear(auth: UserId): F[Unit] = cartRepository.clear(auth)
 }
 
-object InMemoryCartService {
+object CartServiceImpl {
   type MapRef[F[_], K, V] = Ref[F, immutable.Map[K, V]]
   type CartRef[F[_]]      = MapRef[F, UserId, Set[CartLine]]
 

@@ -28,11 +28,10 @@ class OrderServiceImpl[F[_]: Concurrent: Par, CIO[_]](cartService: CartService[F
   override val streamExisting: Stream[F, OrderSummary] = orderRepository.streamExisting.evalMap(toOrderSummary)
 
   override def placeOrder(auth: UserId): F[Option[OrderId]] = {
-    val cartBricks = cartService.findLines(auth)
-
-    cartBricks.map(_.to[SortedSet]).flatMap {
-      _.toNes.traverse(saveOrder(_)(auth))
-    }
+    cartService
+      .findLines(auth)
+      .map(_.to[SortedSet].toNes)
+      .flatMap(_.traverse(saveOrder(_)(auth)))
   }
 
   private def saveOrder(cartLines: NonEmptySet[CartLine])(auth: UserId): F[OrderId] = {

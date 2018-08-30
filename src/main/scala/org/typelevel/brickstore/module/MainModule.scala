@@ -10,8 +10,8 @@ import fs2.async.mutable.Topic
 import org.typelevel.brickstore.InMemoryOrderRepository.OrdersRef
 import org.typelevel.brickstore._
 import org.typelevel.brickstore.auth.RequestAuthenticator
-import org.typelevel.brickstore.cart.InMemoryCartService.CartRef
-import org.typelevel.brickstore.cart.{CartController, CartService, InMemoryCartService}
+import org.typelevel.brickstore.cart.CartServiceImpl.CartRef
+import org.typelevel.brickstore.cart._
 import org.typelevel.brickstore.dto.OrderSummary
 import org.typelevel.brickstore.entity.{OrderId, UserId}
 
@@ -35,7 +35,8 @@ class MainModule[F[_]: Concurrent: Par] private (transactor: Transactor[F],
   override val bricksController: BricksController[F] = wire[BricksController[F]]
 
   //cart
-  private val cartService: CartService[F]        = wire[InMemoryCartService[F, CIO]]
+  private val cartRepository: CartRepository[F]  = wire[InMemoryCartRepository[F]]
+  private val cartService: CartService[F]        = wire[CartServiceImpl[F, CIO]]
   override val cartController: CartController[F] = wire[CartController[F]]
 
   //order
@@ -50,7 +51,7 @@ object MainModule {
 
   def make[F[_]: ConcurrentEffect: Par](transactor: Transactor[F])(implicit ec: ExecutionContext): F[Module[F]] =
     for {
-      cartRef       <- InMemoryCartService.makeRef[F]
+      cartRef       <- CartServiceImpl.makeRef[F]
       ordersRef     <- InMemoryOrderRepository.makeRef[F]
       newOrderTopic <- Topic[F, OrderSummary](OrderSummary(OrderId(0), UserId(0), 0))
     } yield new MainModule[F](transactor, cartRef, ordersRef, newOrderTopic)
