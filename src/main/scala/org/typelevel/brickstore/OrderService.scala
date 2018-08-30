@@ -7,16 +7,14 @@ import cats.implicits._
 import cats.temp.par._
 import io.scalaland.chimney.dsl._
 import fs2._
-import org.typelevel.brickstore.cart.CartService
+import org.typelevel.brickstore.data.OrderWithLines
 import org.typelevel.brickstore.dto.OrderSummary
 import org.typelevel.brickstore.entity.{UserId, _}
-import org.typelevel.brickstore.data.OrderWithLines
 
 import scala.collection.immutable.SortedSet
 
 trait OrderService[F[_]] {
   val streamExisting: Stream[F, OrderSummary]
-
   def placeOrder(auth: UserId): F[Option[OrderId]]
 }
 
@@ -37,9 +35,12 @@ class OrderServiceImpl[F[_]: Concurrent: Par, CIO[_]](cartService: CartService[F
 
   private def saveOrder(cartLines: NonEmptySet[CartLine])(auth: UserId): F[OrderId] = {
     def publishSummary(orderId: OrderId): F[Unit] = {
-      orderRepository.getSummary(orderId).flatMap {
-        _.traverse_(toOrderSummary(_).flatMap(publishOrder))
-      }
+      orderRepository
+        .getSummary(orderId)
+        .map(_.toRight[Throwable](new Exception("Order not found after saving!")))
+        .rethrow
+        .flatMap(toOrderSummary)
+        .flatMap(publishOrder)
     }
 
     val createOrder: F[OrderId] =

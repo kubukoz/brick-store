@@ -1,4 +1,4 @@
-package org.typelevel.brickstore.cart
+package org.typelevel.brickstore
 
 import cats.data._
 import cats.implicits._
@@ -7,7 +7,6 @@ import cats.mtl.implicits._
 import cats.temp.par._
 import cats.{Monad, MonadError}
 import io.scalaland.chimney.dsl._
-import org.typelevel.brickstore.BricksRepository
 import org.typelevel.brickstore.dto.{CartAddError, CartAddRequest, CartBrick}
 import org.typelevel.brickstore.entity.{Brick, CartLine, UserId}
 import org.typelevel.brickstore.util.either._

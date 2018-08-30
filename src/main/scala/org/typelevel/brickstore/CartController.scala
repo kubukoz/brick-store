@@ -1,4 +1,4 @@
-package org.typelevel.brickstore.cart
+package org.typelevel.brickstore
 
 import cats.effect.Sync
 import cats.implicits._

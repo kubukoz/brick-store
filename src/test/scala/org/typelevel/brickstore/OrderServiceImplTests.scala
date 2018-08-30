@@ -1,0 +1,123 @@
+package org.typelevel.brickstore
+
+import cats.effect.IO
+import cats.implicits._
+import fs2.async.Ref
+import org.scalatest.{Matchers, WordSpec}
+import org.typelevel.brickstore.dto.OrderSummary
+import org.typelevel.brickstore.entity._
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.TimeoutException
+import scala.concurrent.duration._
+
+class OrderServiceImplTests extends WordSpec with Matchers {
+  "placeOrder" when {
+    "the cart is empty" should {
+      "not create an order" in {
+
+        val mockCartService: CartService[IO] = new CartServiceStub[IO] {
+          override def findLines(auth: UserId): IO[Set[CartLine]] = IO.pure(Set.empty)
+        }
+
+        val userId = UserId(1)
+
+        val program = for {
+          publishedRef <- Ref[IO, Int](0)
+
+          service: OrderService[IO] = new OrderServiceImpl[IO, IO](mockCartService,
+                                                                   new OrderRepositoryStub[IO],
+                                                                   null,
+                                                                   _ => publishedRef.modify(_ + 1).void)
+
+          result                <- service.placeOrder(userId)
+          _                     <- IO.sleep(200.millis) //wait for publishing (which shouldn't happen anyway)
+          publishedSummaryCount <- publishedRef.get
+        } yield {
+          result shouldBe empty
+          publishedSummaryCount shouldBe 0
+        }
+
+        program.unsafeRunSync()
+      }
+    }
+
+    "the cart isn't empty" should {
+      "create a new order" in {
+        val userId1 = UserId(1)
+        val userId2 = UserId(14)
+
+        val mockCartService: CartService[IO] = new CartServiceStub[IO] {
+          override def findLines(auth: UserId): IO[Set[CartLine]] = {
+            val lines = auth match {
+              case `userId1` =>
+                Set(
+                  CartLine(BrickId(1), 10),
+                  CartLine(BrickId(3), 1)
+                )
+              case `userId2` =>
+                Set(
+                  CartLine(BrickId(2), 5),
+                  CartLine(BrickId(4), 3)
+                )
+
+              case _ => Stub.apply
+            }
+
+            lines.pure[IO]
+          }
+
+          override def clear(auth: UserId): IO[Unit] = IO.unit //no need to clear in this test
+        }
+
+        val mockBrickRepository: BricksRepository[IO, IO] = new BricksRepositoryStub[IO] {
+          override def findById(id: BrickId): IO[Option[Brick]] =
+            Map(
+              BrickId(1) -> Brick("Test brick 1", 100, BrickColor.Blue),
+              BrickId(2) -> Brick("Test brick 2", 150, BrickColor.Black),
+              BrickId(3) -> Brick("Test brick 3", 200, BrickColor.Red),
+              BrickId(4) -> Brick("Test brick 4", 50, BrickColor.Green)
+            ).get(id).pure[IO]
+        }
+        val program = for {
+          publishedRef <- Ref[IO, List[OrderSummary]](Nil)
+          ordersRef    <- InMemoryOrderRepository.makeRef[IO]
+
+          service: OrderService[IO] = new OrderServiceImpl[IO, IO](mockCartService,
+                                                                   new InMemoryOrderRepository[IO](ordersRef),
+                                                                   mockBrickRepository,
+                                                                   summary => publishedRef.modify(summary :: _).void)
+
+          (order1Id, order2Id) <- (service.placeOrder(userId1), service.placeOrder(userId2)).parTupled
+
+          publishedSummaries <- IOUtils.retryUntil(publishedRef.get)(_.size >= 2)(n = 5, waitBetween = 100.millis)
+        } yield {
+          //uncertain ordering because orders are made in parallel
+          List(order1Id.get, order2Id.get) should contain theSameElementsAs List(OrderId(1), OrderId(2))
+
+          publishedSummaries should contain theSameElementsAs List(
+            OrderSummary(order1Id.get, userId1, 1200),
+            OrderSummary(order2Id.get, userId2, 900)
+          )
+        }
+
+        program.unsafeRunSync()
+      }
+    }
+  }
+}
+
+object IOUtils {
+
+  def retryUntil[A](ioa: IO[A])(f: A => Boolean)(n: Int, waitBetween: FiniteDuration): IO[A] = {
+    val timeoutFailure = new TimeoutException(s"Tried $n times every $waitBetween")
+    def go(n: Int): IO[A] = ioa.flatMap {
+      case a if f(a) => a.pure[IO]
+      case _ if n <= 0 =>
+        IO.raiseError(timeoutFailure)
+      case _ => IO.sleep(waitBetween) *> go(n - 1)
+    }
+
+    go(n)
+  }
+}

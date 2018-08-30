@@ -7,11 +7,10 @@ import doobie.free.connection.ConnectionIO
 import doobie.util.transactor.Transactor
 import fs2.Stream
 import fs2.async.mutable.Topic
+import org.typelevel.brickstore.InMemoryCartRepository.CartRef
 import org.typelevel.brickstore.InMemoryOrderRepository.OrdersRef
 import org.typelevel.brickstore._
 import org.typelevel.brickstore.auth.RequestAuthenticator
-import org.typelevel.brickstore.cart.InMemoryCartRepository.CartRef
-import org.typelevel.brickstore.cart._
 import org.typelevel.brickstore.dto.OrderSummary
 import org.typelevel.brickstore.entity.{OrderId, UserId}
 

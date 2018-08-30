@@ -1,9 +1,10 @@
-package org.typelevel.brickstore.cart
+package org.typelevel.brickstore
+
 import cats.Functor
 import cats.effect.Sync
 import cats.implicits._
 import fs2.async.Ref
-import org.typelevel.brickstore.cart.InMemoryCartRepository.CartRef
+import org.typelevel.brickstore.InMemoryCartRepository.CartRef
 import org.typelevel.brickstore.entity.{CartLine, UserId}
 
 import scala.collection.immutable
