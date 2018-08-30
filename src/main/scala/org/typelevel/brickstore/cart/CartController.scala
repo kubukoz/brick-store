@@ -1,5 +1,6 @@
 package org.typelevel.brickstore.cart
 
+import cats.data.{EitherT, NonEmptyList}
 import cats.effect.Sync
 import cats.implicits._
 import io.circe.syntax._
@@ -14,11 +15,11 @@ class CartController[F[_]: Sync](cart: CartService[F], authenticated: RequestAut
     AuthedService {
       case (req @ POST -> Root / "add") as auth =>
         for {
-          body  <- req.decodeJson[CartAddRequest]
-          added <- cart.add(body)(auth)
-          response <- {
-            if (added) Ok()
-            else UnprocessableEntity("Brick not found")
+          body      <- req.decodeJson[CartAddRequest]
+          addResult <- cart.add(body)(auth)
+          response <- addResult match {
+            case Left(errors) => UnprocessableEntity(errors.asJson)
+            case _            => Ok()
           }
         } yield response
 

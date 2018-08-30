@@ -17,6 +17,7 @@ val http4s = Seq(
 val cats =
   Seq(
     "org.typelevel"     %% "cats-core"      % "1.2.0",
+    "org.typelevel"     %% "cats-mtl-core"  % "0.3.0",
     "io.chrisdavenport" %% "linebacker"     % "0.1.0",
     "io.chrisdavenport" %% "cats-par"       % "0.2.0",
     "org.typelevel"     %% "cats-effect"    % "0.10.1",

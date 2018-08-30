@@ -2,7 +2,7 @@ package org.typelevel.brickstore.module
 
 import cats.effect.{Concurrent, ConcurrentEffect}
 import cats.implicits._
-import cats.temp.par.Par
+import cats.temp.par._
 import doobie.free.connection.ConnectionIO
 import doobie.util.transactor.Transactor
 import fs2.Stream

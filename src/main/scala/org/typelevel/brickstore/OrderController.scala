@@ -28,9 +28,10 @@ class OrderController[F[_]: Sync](orderService: OrderService[F],
     AuthedService {
       case POST -> Root as auth =>
         for {
-          orderId <- orderService.placeOrder(auth)
-          response <- orderId.fold(NotFound("Didn't find any items in the cart for current user")) { id =>
-            Created(show"Created order with id: $id")
+          orderResult <- orderService.placeOrder(auth)
+          response <- orderResult.fold(UnprocessableEntity("Didn't find any items in the cart for current user")) {
+            id =>
+              Created(show"Created order with id: $id")
           }
         } yield response
     }

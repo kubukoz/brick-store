@@ -1,13 +1,13 @@
 package org.typelevel.brickstore
 import cats.Applicative
-import cats.data.{EitherNel, NonEmptyList}
+import cats.data.EitherNel
 import cats.implicits._
 import fs2.Pipe
 import io.scalaland.chimney.dsl._
 import org.typelevel.brickstore.dto.ImportResult.ImportResultNel
 import org.typelevel.brickstore.dto.{BrickToCreate, BrickValidationError, ImportResult}
 import org.typelevel.brickstore.entity.{Brick, BrickId}
-import org.typelevel.brickstore.utilz._
+import org.typelevel.brickstore.util.either._
 
 trait BricksService[F[_]] {
   type LineNumber = Long
@@ -28,10 +28,4 @@ class BricksServiceImpl[F[_]: Applicative, CIO[_]](repository: BricksRepository[
 
         validated.leftMap(lineNumber -> _)
     }.evalMap(_.traverse(repository.insert)).map(ImportResult.fromEither)
-}
-
-object utilz {
-  implicit class EitherExt[E, T](val either: Either[E, T]) extends AnyVal {
-    def toEitherNel[EE >: E]: EitherNel[EE, T] = either.leftMap(NonEmptyList.one)
-  }
 }
