@@ -50,7 +50,7 @@ class OrderServiceImpl[F[_]: Concurrent: Par, CIO[_]](cartService: CartService[F
     val clearCart = cartService.clear(auth)
 
     createOrder.flatTap {
-      clearCart *> publishSummary(_).start.void
+      clearCart *> publishSummary(_).start
     }
   }
 
