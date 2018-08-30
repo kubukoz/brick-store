@@ -1,14 +1,30 @@
 package org.typelevel.brickstore
 import cats.effect.Sync
-import org.http4s.{AuthedService, HttpService}
-import org.http4s.dsl.Http4sDsl
 import cats.implicits._
+import fs2._
+import org.http4s.dsl.Http4sDsl
+import org.http4s.{AuthedService, HttpService}
 import org.typelevel.brickstore.auth.RequestAuthenticator
+import org.typelevel.brickstore.dto.OrderSummary
+import org.typelevel.brickstore.util.http4s.jsonUtils
 
-class OrderController[F[_]: Sync](orderService: OrderService[F], authenticated: RequestAuthenticator[F])
+class OrderController[F[_]: Sync](orderService: OrderService[F],
+                                  authenticated: RequestAuthenticator[F],
+                                  newOrderStream: Stream[F, OrderSummary])
     extends Http4sDsl[F] {
 
-  val service: HttpService[F] = authenticated {
+  val adminService: HttpService[F] = authenticated.admin {
+    AuthedService {
+      case GET -> Root / "stream" as _ =>
+        val existingStream = orderService.streamExisting
+
+        val allStream = existingStream ++ newOrderStream
+
+        jsonUtils.toJsonArray(allStream)(Ok.apply(_))
+    }
+  }
+
+  val userService: HttpService[F] = authenticated {
     AuthedService {
       case POST -> Root as auth =>
         for {
@@ -19,4 +35,6 @@ class OrderController[F[_]: Sync](orderService: OrderService[F], authenticated: 
         } yield response
     }
   }
+
+  val service: HttpService[F] = adminService <+> userService
 }

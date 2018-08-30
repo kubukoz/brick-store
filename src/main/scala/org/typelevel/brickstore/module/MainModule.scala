@@ -1,20 +1,31 @@
 package org.typelevel.brickstore.module
 
-import cats.effect.Sync
+import cats.effect.{Concurrent, ConcurrentEffect}
 import cats.implicits._
 import cats.temp.par.Par
 import doobie.free.connection.ConnectionIO
 import doobie.util.transactor.Transactor
+import fs2.Stream
+import fs2.async.mutable.Topic
 import org.typelevel.brickstore.InMemoryOrderRepository.OrdersRef
 import org.typelevel.brickstore._
 import org.typelevel.brickstore.auth.RequestAuthenticator
 import org.typelevel.brickstore.cart.InMemoryCartService.CartRef
 import org.typelevel.brickstore.cart.{CartController, CartService, InMemoryCartService}
+import org.typelevel.brickstore.dto.OrderSummary
+import org.typelevel.brickstore.entity.{OrderId, UserId}
 
-class MainModule[F[_]: Sync: Par] private (transactor: Transactor[F], cartRef: CartRef[F], ordersRef: OrdersRef[F])
+import scala.concurrent.ExecutionContext
+
+class MainModule[F[_]: Concurrent: Par] private (transactor: Transactor[F],
+                                                 cartRef: CartRef[F],
+                                                 ordersRef: OrdersRef[F],
+                                                 newOrderTopic: Topic[F, OrderSummary])
     extends Module[F] {
   import com.softwaremill.macwire._
   private type CIO[A] = ConnectionIO[A]
+
+  private val orderStream: Stream[F, OrderSummary] = newOrderTopic.subscribe(100).tail
 
   private val requestAuthenticator: RequestAuthenticator[F] = wire[RequestAuthenticator[F]]
 
@@ -28,16 +39,17 @@ class MainModule[F[_]: Sync: Par] private (transactor: Transactor[F], cartRef: C
   override val cartController: CartController[F] = wire[CartController[F]]
 
   //order
-  private val orderRepository: OrderRepository[F]  = wire[InMemoryOrderRepository[F]]
+  private val orderRepository: OrderRepository[F]  = wire[InMemoryOrderRepository[F, CIO]]
   private val orderService: OrderService[F]        = wire[OrderServiceImpl[F]]
   override val orderController: OrderController[F] = wire[OrderController[F]]
 }
 
 object MainModule {
 
-  def make[F[_]: Sync: Par](transactor: Transactor[F]): F[Module[F]] =
+  def make[F[_]: ConcurrentEffect: Par](transactor: Transactor[F])(implicit ec: ExecutionContext): F[Module[F]] =
     for {
-      cartRef   <- InMemoryCartService.makeRef[F]
-      ordersRef <- InMemoryOrderRepository.makeRef[F]
-    } yield new MainModule[F](transactor, cartRef, ordersRef)
+      cartRef       <- InMemoryCartService.makeRef[F]
+      ordersRef     <- InMemoryOrderRepository.makeRef[F]
+      newOrderTopic <- Topic[F, OrderSummary](OrderSummary(OrderId(0), UserId(0), 0))
+    } yield new MainModule[F](transactor, cartRef, ordersRef, newOrderTopic)
 }

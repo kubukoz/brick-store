@@ -4,12 +4,10 @@ import cats.effect.Sync
 import fs2.{Pipe, Stream}
 import io.circe.Decoder
 import io.circe.fs2._
-import io.circe.syntax._
 import org.http4s.HttpService
-import org.http4s.MediaType.`application/json`
 import org.http4s.dsl.Http4sDsl
-import org.http4s.headers._
 import org.typelevel.brickstore.dto.BrickToCreate
+import org.typelevel.brickstore.util.http4s.jsonUtils
 
 class BricksController[F[_]: Sync](bricksService: BricksService[F]) extends Http4sDsl[F] {
 
@@ -20,7 +18,7 @@ class BricksController[F[_]: Sync](bricksService: BricksService[F]) extends Http
 
         val results = bodyBricks.through(bricksService.createEach)
 
-        Accepted.apply(results.map(_.asJson.noSpaces).intersperse("\n"), `Content-Type`(`application/json`))
+        jsonUtils.toJsonArray(results)(Accepted.apply(_))
     }
   }
 

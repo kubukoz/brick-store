@@ -1,11 +1,12 @@
 package org.typelevel.brickstore
 
-import cats.effect.{Effect, IO}
+import cats.effect.{ConcurrentEffect, IO}
 import cats.implicits._
 import cats.temp.par.Par
 import doobie.hikari.HikariTransactor
 import fs2.Stream.{eval => SE}
 import fs2.{Stream, StreamApp}
+import io.chrisdavenport.linebacker.contexts.Executors
 import org.flywaydb.core.Flyway
 import org.http4s
 import org.http4s.server.Router
@@ -13,7 +14,9 @@ import org.http4s.server.blaze.BlazeBuilder
 import org.typelevel.brickstore.config.DbConfig
 import org.typelevel.brickstore.module.{MainModule, Module}
 
-class Application[F[_]: Par](implicit F: Effect[F]) extends StreamApp[F] {
+import scala.concurrent.ExecutionContext
+
+class Application[F[_]: Par](implicit F: ConcurrentEffect[F]) extends StreamApp[F] {
   private val configF: F[DbConfig] = pureconfig.module.catseffect.loadConfigF[F, DbConfig]("db")
 
   private def transactorStream(config: DbConfig): Stream[F, HikariTransactor[F]] =
@@ -42,7 +45,9 @@ class Application[F[_]: Par](implicit F: Effect[F]) extends StreamApp[F] {
       transactor <- transactorStream(config)
       _          <- SE(runMigrations(config))
 
-      module <- SE(MainModule.make(transactor))
+      ec     <- Executors.fixedPool[F](10).map(ExecutionContext.fromExecutorService)
+      module <- SE(MainModule.make(transactor)(F, Par[F], ec))
+
       server = BlazeBuilder[F].bindHttp().mountService(mergeServices(module))
 
       exitCode <- server.serve
