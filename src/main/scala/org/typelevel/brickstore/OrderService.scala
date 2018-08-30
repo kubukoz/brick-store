@@ -9,7 +9,7 @@ import io.scalaland.chimney.dsl._
 import fs2._
 import org.typelevel.brickstore.cart.{CartLine, CartService}
 import org.typelevel.brickstore.dto.OrderSummary
-import org.typelevel.brickstore.entity.{OrderId, OrderLine, UserId}
+import org.typelevel.brickstore.entity.{OrderId, OrderLine, OrderWithLines, UserId}
 
 import scala.collection.immutable.SortedSet
 
@@ -19,12 +19,13 @@ trait OrderService[F[_]] {
   def placeOrder(auth: UserId): F[Option[OrderId]]
 }
 
-class OrderServiceImpl[F[_]: Concurrent: Par](cartService: CartService[F],
-                                              orderRepository: OrderRepository[F],
-                                              publishOrder: OrderSummary => F[Unit])
+class OrderServiceImpl[F[_]: Concurrent: Par, CIO[_]](cartService: CartService[F],
+                                                      orderRepository: OrderRepository[F],
+                                                      bricksRepository: BricksRepository[F, CIO],
+                                                      publishOrder: OrderSummary => F[Unit])
     extends OrderService[F] {
 
-  override val streamExisting: Stream[F, OrderSummary] = orderRepository.streamExisting
+  override val streamExisting: Stream[F, OrderSummary] = orderRepository.streamExisting.evalMap(toOrderSummary)
 
   override def placeOrder(auth: UserId): F[Option[OrderId]] = {
     val cartBricks = cartService.findLines(auth)
@@ -36,7 +37,9 @@ class OrderServiceImpl[F[_]: Concurrent: Par](cartService: CartService[F],
 
   private def saveOrder(cartLines: NonEmptySet[CartLine])(auth: UserId): F[OrderId] = {
     def publishSummary(orderId: OrderId): F[Unit] = {
-      orderRepository.getSummary(orderId).flatMap(_.traverse_(publishOrder))
+      orderRepository.getSummary(orderId).flatMap {
+        _.traverse_(toOrderSummary(_).flatMap(publishOrder))
+      }
     }
 
     val createOrder: F[OrderId] =
@@ -58,4 +61,14 @@ class OrderServiceImpl[F[_]: Concurrent: Par](cartService: CartService[F],
 
   private def createOrderLine(orderId: OrderId): CartLine => OrderLine =
     _.into[OrderLine].withFieldConst(_.orderId, orderId).transform
+
+  private def toOrderSummary(orderWithLines: OrderWithLines): F[OrderSummary] = {
+    for {
+      prices <- orderWithLines.lines.parTraverse(lineTotal)
+      orderTotal = prices.combineAll
+    } yield orderWithLines.order.into[OrderSummary].withFieldConst(_.total, orderTotal).transform
+  }
+
+  private def lineTotal(line: OrderLine): F[Long] =
+    bricksRepository.findById(line.brickId).map(_.foldMap(_.price * line.quantity))
 }

@@ -3,48 +3,35 @@ import cats.effect.Sync
 import cats.implicits._
 import cats.temp.par._
 import cats.{Monad, Semigroup}
+import fs2.Stream
 import fs2.async.Ref
 import org.typelevel.brickstore.InMemoryOrderRepository.OrdersRef
-import org.typelevel.brickstore.dto.OrderSummary
-import org.typelevel.brickstore.entity.{OrderId, OrderLine, UserId}
+import org.typelevel.brickstore.entity.{OrderId, OrderLine, OrderWithLines, UserId}
 
 import scala.collection.immutable.SortedMap
-import fs2.Stream
-import io.scalaland.chimney.dsl._
 
 trait OrderRepository[F[_]] {
-  val streamExisting: fs2.Stream[F, OrderSummary]
-  def getSummary(orderId: OrderId): F[Option[OrderSummary]]
+  val streamExisting: fs2.Stream[F, OrderWithLines]
+  def getSummary(orderId: OrderId): F[Option[OrderWithLines]]
   def createOrder(auth: UserId): F[OrderId]
   def addOrderLine(orderId: OrderId, line: OrderLine): F[Unit]
 }
 
-class InMemoryOrderRepository[F[_]: Monad: Par, CIO[_]](ref: OrdersRef[F], bricksRepository: BricksRepository[F, CIO])
-    extends OrderRepository[F] {
+class InMemoryOrderRepository[F[_]: Monad: Par](ref: OrdersRef[F]) extends OrderRepository[F] {
 
   private val getNewOrderId: F[OrderId] = ref.get.map(_.value.keySet.map(_.id).maximumOption.combineAll.inc)
 
-  override def getSummary(orderId: OrderId): F[Option[OrderSummary]] =
+  override def getSummary(orderId: OrderId): F[Option[OrderWithLines]] =
     ref.get
       .map(_.value.find(_._1.id === orderId))
-      .flatMap(_.traverse((getOrderSummary _).tupled))
+      .map(_.map(OrderWithLines.tupled))
 
-  override val streamExisting: fs2.Stream[F, OrderSummary] =
+  override val streamExisting: fs2.Stream[F, OrderWithLines] =
     Stream
       .eval(ref.get)
       .map(_.value.toList)
       .flatMap(Stream.emits(_))
-      .evalMap((getOrderSummary _).tupled)
-
-  private def getOrderSummary(order: BrickOrder, lines: List[OrderLine]): F[OrderSummary] = {
-    for {
-      prices <- lines.parTraverse(lineTotal)
-      orderTotal = prices.combineAll
-    } yield order.into[OrderSummary].withFieldConst(_.total, orderTotal).transform
-  }
-
-  private def lineTotal(line: OrderLine): F[Long] =
-    bricksRepository.findById(line.brickId).map(_.foldMap(_.price * line.quantity))
+      .map(OrderWithLines.tupled)
 
   override def createOrder(auth: UserId): F[OrderId] = getNewOrderId.flatTap { newId =>
     ref.modify(_ |+| OrderState.emptyOrder(BrickOrder(newId, auth)))
