@@ -8,8 +8,8 @@ import cats.temp.par._
 import cats.{Monad, MonadError}
 import io.scalaland.chimney.dsl._
 import org.typelevel.brickstore.BricksRepository
-import org.typelevel.brickstore.dto.CartBrick
-import org.typelevel.brickstore.entity.{Brick, UserId}
+import org.typelevel.brickstore.dto.{CartAddError, CartAddRequest, CartBrick}
+import org.typelevel.brickstore.entity.{Brick, CartLine, UserId}
 import org.typelevel.brickstore.util.either._
 
 trait CartService[F[_]] {
@@ -24,8 +24,8 @@ class CartServiceImpl[F[_]: Par: Monad, CIO[_]](cartRepository: CartRepository[F
                                                 brickRepository: BricksRepository[F, CIO])
     extends CartService[F] {
 
-  override val add: CartAddRequest => UserId => F[EitherNel[CartAddError, Unit]] = req => {
-    auth => doAdd[EitherT[F, NonEmptyList[CartAddError], ?]](req)(auth).value
+  override val add: CartAddRequest => UserId => F[EitherNel[CartAddError, Unit]] = req => { auth =>
+    doAdd[EitherT[F, NonEmptyList[CartAddError], ?]](req)(auth).value
   }
 
   private def doAdd[G[_]](request: CartAddRequest)(auth: UserId)(implicit P: Par[G],

@@ -4,7 +4,7 @@ import cats.effect.Sync
 import cats.implicits._
 import fs2.async.Ref
 import org.typelevel.brickstore.cart.InMemoryCartRepository.CartRef
-import org.typelevel.brickstore.entity.UserId
+import org.typelevel.brickstore.entity.{CartLine, UserId}
 
 import scala.collection.immutable
 import scala.collection.immutable.ListSet

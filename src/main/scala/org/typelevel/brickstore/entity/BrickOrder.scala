@@ -1,7 +1,6 @@
-package org.typelevel.brickstore
-import cats.Order
-import org.typelevel.brickstore.entity.{OrderId, UserId}
+package org.typelevel.brickstore.entity
 
+import cats.Order
 case class BrickOrder(id: OrderId, userId: UserId)
 
 object BrickOrder {

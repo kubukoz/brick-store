@@ -1,6 +1,6 @@
-package org.typelevel.brickstore.cart
+package org.typelevel.brickstore.entity
+
 import cats.Order
-import org.typelevel.brickstore.entity.BrickId
 
 case class CartLine(brickId: BrickId, quantity: Int)
 

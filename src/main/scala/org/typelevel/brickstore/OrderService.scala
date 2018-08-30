@@ -7,9 +7,10 @@ import cats.implicits._
 import cats.temp.par._
 import io.scalaland.chimney.dsl._
 import fs2._
-import org.typelevel.brickstore.cart.{CartLine, CartService}
+import org.typelevel.brickstore.cart.CartService
 import org.typelevel.brickstore.dto.OrderSummary
-import org.typelevel.brickstore.entity.{OrderId, OrderLine, OrderWithLines, UserId}
+import org.typelevel.brickstore.entity.{UserId, _}
+import org.typelevel.brickstore.data.OrderWithLines
 
 import scala.collection.immutable.SortedSet
 

@@ -1,6 +1,5 @@
 package org.typelevel.brickstore.cart
 
-import cats.data.{EitherT, NonEmptyList}
 import cats.effect.Sync
 import cats.implicits._
 import io.circe.syntax._
@@ -8,6 +7,7 @@ import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{AuthedService, HttpService}
 import org.typelevel.brickstore.auth.RequestAuthenticator
+import org.typelevel.brickstore.dto.CartAddRequest
 
 class CartController[F[_]: Sync](cart: CartService[F], authenticated: RequestAuthenticator[F]) extends Http4sDsl[F] {
 

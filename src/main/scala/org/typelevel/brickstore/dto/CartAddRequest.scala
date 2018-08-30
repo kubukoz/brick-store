@@ -1,10 +1,10 @@
-package org.typelevel.brickstore.cart
+package org.typelevel.brickstore.dto
 
-import io.circe.{Decoder, Encoder}
-import io.circe.derivation._
-import org.typelevel.brickstore.entity.BrickId
-import enumeratum._
 import enumeratum.Circe._
+import enumeratum._
+import io.circe.derivation._
+import io.circe.{Decoder, Encoder}
+import org.typelevel.brickstore.entity.BrickId
 
 import scala.collection.immutable
 

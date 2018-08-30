@@ -1,4 +1,5 @@
 package org.typelevel.brickstore.dto
+
 import enumeratum.Circe._
 import enumeratum._
 import io.circe.derivation._

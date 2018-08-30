@@ -1,4 +1,5 @@
 package org.typelevel.brickstore.entity
+
 import cats.implicits._
 import cats.kernel.Monoid
 import cats.{Order, Show}

@@ -6,7 +6,8 @@ import cats.{Monad, Semigroup}
 import fs2.Stream
 import fs2.async.Ref
 import org.typelevel.brickstore.InMemoryOrderRepository.OrdersRef
-import org.typelevel.brickstore.entity.{OrderId, OrderLine, OrderWithLines, UserId}
+import org.typelevel.brickstore.entity.{UserId, _}
+import org.typelevel.brickstore.data.OrderWithLines
 
 import scala.collection.immutable.SortedMap
 
