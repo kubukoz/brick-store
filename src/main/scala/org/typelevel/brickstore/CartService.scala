@@ -1,11 +1,11 @@
 package org.typelevel.brickstore
 
+import cats.MonadError
 import cats.data._
 import cats.implicits._
 import cats.mtl.FunctorLayer
 import cats.mtl.implicits._
 import cats.temp.par._
-import cats.{Monad, MonadError}
 import io.scalaland.chimney.dsl._
 import org.typelevel.brickstore.dto.{CartAddError, CartAddRequest, CartBrick}
 import org.typelevel.brickstore.entity.{Brick, CartLine, UserId}
@@ -13,15 +13,16 @@ import org.typelevel.brickstore.util.either._
 
 trait CartService[F[_]] {
   val add: CartAddRequest => UserId => F[EitherNel[CartAddError, Unit]]
-  def findBricks(auth: UserId): F[Set[CartBrick]]
-  def findLines(auth: UserId): F[Set[CartLine]]
+  def findBricks(auth: UserId): F[Option[NonEmptyList[CartBrick]]]
+  def findLines(auth: UserId): F[Option[NonEmptyList[CartLine]]]
 
   def clear(auth: UserId): F[Unit]
 }
 
-class CartServiceImpl[F[_]: Par: Monad, CIO[_]](cartRepository: CartRepository[F],
-                                                brickRepository: BricksRepository[F, CIO])
+class CartServiceImpl[F[_]: Par: MonadError[?[_], Throwable], CIO[_]](cartRepository: CartRepository[F],
+                                                                      brickRepository: BricksRepository[F, CIO])
     extends CartService[F] {
+  private val brickNotFound: Throwable = new Exception("Corrupted data: brick not found")
 
   override val add: CartAddRequest => UserId => F[EitherNel[CartAddError, Unit]] = req => { auth =>
     doAdd[EitherT[F, NonEmptyList[CartAddError], ?]](req)(auth).value
@@ -53,12 +54,17 @@ class CartServiceImpl[F[_]: Par: Monad, CIO[_]](cartRepository: CartRepository[F
     ).parTupled.void <* saveToCart
   }
 
-  override def findBricks(auth: UserId): F[Set[CartBrick]] =
+  override def findBricks(auth: UserId): F[Option[NonEmptyList[CartBrick]]] = {
+    val findBrickOrFail: CartLine => F[CartBrick] = findBrick(_).flatMap(_.toRight(brickNotFound).liftTo[F])
+
     findLines(auth).flatMap {
-      _.toList
-        .parTraverse(findBrick)
-        .map(_.flatten.toSet)
+      //there might be no lines - that's ok, we traverse
+      _.traverse {
+        //traverse the lines (in parallel)
+        _.parTraverse(findBrickOrFail)
+      }
     }
+  }
 
   private def findBrick(line: CartLine): F[Option[CartBrick]] = {
     val convert: Brick => CartBrick = _.into[CartBrick].withFieldConst(_.quantity, line.quantity).transform
@@ -68,7 +74,7 @@ class CartServiceImpl[F[_]: Par: Monad, CIO[_]](cartRepository: CartRepository[F
       .map(_.map(convert))
   }
 
-  override def findLines(auth: UserId): F[Set[CartLine]] = cartRepository.findLines(auth)
+  override def findLines(auth: UserId): F[Option[NonEmptyList[CartLine]]] = cartRepository.findLines(auth)
 
   override def clear(auth: UserId): F[Unit] = cartRepository.clear(auth)
 }

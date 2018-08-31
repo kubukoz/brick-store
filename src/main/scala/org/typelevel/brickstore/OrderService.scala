@@ -1,6 +1,6 @@
 package org.typelevel.brickstore
 
-import cats.data.NonEmptySet
+import cats.data.NonEmptyList
 import cats.effect.Concurrent
 import cats.effect.Concurrent.ops._
 import cats.implicits._
@@ -10,8 +10,6 @@ import fs2._
 import org.typelevel.brickstore.data.OrderWithLines
 import org.typelevel.brickstore.dto.OrderSummary
 import org.typelevel.brickstore.entity.{UserId, _}
-
-import scala.collection.immutable.SortedSet
 
 trait OrderService[F[_]] {
   val streamExisting: Stream[F, OrderSummary]
@@ -29,11 +27,10 @@ class OrderServiceImpl[F[_]: Concurrent: Par, CIO[_]](cartService: CartService[F
   override def placeOrder(auth: UserId): F[Option[OrderId]] = {
     cartService
       .findLines(auth)
-      .map(_.to[SortedSet].toNes)
       .flatMap(_.traverse(saveOrder(_)(auth)))
   }
 
-  private def saveOrder(cartLines: NonEmptySet[CartLine])(auth: UserId): F[OrderId] = {
+  private def saveOrder(cartLines: NonEmptyList[CartLine])(auth: UserId): F[OrderId] = {
     def publishSummary(orderId: OrderId): F[Unit] = {
       orderRepository
         .getSummary(orderId)
@@ -43,16 +40,15 @@ class OrderServiceImpl[F[_]: Concurrent: Par, CIO[_]](cartService: CartService[F
         .flatMap(publishOrder)
     }
 
+    val clearCart = cartService.clear(auth)
+
     val createOrder: F[OrderId] =
       orderRepository
         .createOrder(auth)
-        .flatTap(orderId => cartLines.toNonEmptyList.traverse(saveLine(orderId, _)))
 
-    val clearCart = cartService.clear(auth)
-
-    createOrder.flatTap {
-      clearCart *> publishSummary(_).start
-    }
+    createOrder
+      .flatTap(orderId => cartLines.traverse(saveLine(orderId, _)))
+      .flatTap(publishSummary(_).start) <* clearCart
   }
 
   private def saveLine(orderId: OrderId, line: CartLine): F[Unit] = {

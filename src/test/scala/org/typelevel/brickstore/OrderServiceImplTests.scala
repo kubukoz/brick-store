@@ -1,5 +1,6 @@
 package org.typelevel.brickstore
 
+import cats.data.NonEmptyList
 import cats.effect.IO
 import cats.implicits._
 import fs2.async.Ref
@@ -16,7 +17,7 @@ class OrderServiceImplTests extends WordSpec with Matchers {
       "not create an order" in {
 
         val mockCartService: CartService[IO] = new CartServiceStub[IO] {
-          override def findLines(auth: UserId): IO[Set[CartLine]] = IO.pure(Set.empty)
+          override def findLines(auth: UserId): IO[Option[NonEmptyList[CartLine]]] = IO.pure(None)
         }
 
         val userId = UserId(1)
@@ -51,18 +52,22 @@ class OrderServiceImplTests extends WordSpec with Matchers {
         val sleepRandom: IO[Unit] = IO(scala.util.Random.nextInt(2)).map(_.millis * 200) >>= IO.sleep
 
         def mockCartService(cartCleared: Ref[IO, List[UserId]]): CartService[IO] = new CartServiceStub[IO] {
-          override def findLines(auth: UserId): IO[Set[CartLine]] = {
+          override def findLines(auth: UserId): IO[Option[NonEmptyList[CartLine]]] = {
             val lines = auth match {
               case `userId1` =>
-                Set(
-                  CartLine(BrickId(1), 10),
-                  CartLine(BrickId(3), 1)
-                )
+                NonEmptyList
+                  .of(
+                    CartLine(BrickId(1), 10),
+                    CartLine(BrickId(3), 1)
+                  )
+                  .some
               case `userId2` =>
-                Set(
-                  CartLine(BrickId(2), 5),
-                  CartLine(BrickId(4), 3)
-                )
+                NonEmptyList
+                  .of(
+                    CartLine(BrickId(2), 5),
+                    CartLine(BrickId(4), 3)
+                  )
+                  .some
 
               case _ => Stub.apply
             }

@@ -49,10 +49,14 @@ class MainModule[F[_]: Concurrent: Par] private (transactor: Transactor[F],
 
 object MainModule {
 
-  def make[F[_]: ConcurrentEffect: Par](transactor: Transactor[F])(implicit ec: ExecutionContext): F[Module[F]] =
+  def make[F[_]: ConcurrentEffect: Par](transactor: Transactor[F]): F[Module[F]] = {
+    //for topic only
+    import ExecutionContext.Implicits.global
+
     for {
       cartRef       <- InMemoryCartRepository.makeRef[F]
       ordersRef     <- InMemoryOrderRepository.makeRef[F]
       newOrderTopic <- Topic[F, OrderSummary](OrderSummary(OrderId(0), UserId(0), 0))
     } yield new MainModule[F](transactor, cartRef, ordersRef, newOrderTopic)
+  }
 }
