@@ -8,7 +8,6 @@ import org.typelevel.brickstore.dto.OrderSummary
 import org.typelevel.brickstore.entity._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.TimeoutException
 import scala.concurrent.duration._
 
 class OrderServiceImplTests extends WordSpec with Matchers {
@@ -30,8 +29,10 @@ class OrderServiceImplTests extends WordSpec with Matchers {
                                                                    null,
                                                                    _ => publishedRef.modify(_ + 1).void)
 
-          result                <- service.placeOrder(userId)
-          _                     <- IO.sleep(200.millis) //wait for publishing (which shouldn't happen anyway)
+          result <- service.placeOrder(userId)
+
+          //todo when cats-effect 1.x is released, replace with test clock tick
+          _                     <- IO.sleep(200.millis)
           publishedSummaryCount <- publishedRef.get
         } yield {
           result shouldBe empty
@@ -43,11 +44,13 @@ class OrderServiceImplTests extends WordSpec with Matchers {
     }
 
     "the cart isn't empty" should {
-      "create a new order" in {
+      "create a new order with the right totals, publish the summary and clear the cart" in {
         val userId1 = UserId(1)
         val userId2 = UserId(14)
 
-        val mockCartService: CartService[IO] = new CartServiceStub[IO] {
+        val sleepRandom: IO[Unit] = IO(scala.util.Random.nextInt(2)).map(_.millis * 200) >>= IO.sleep
+
+        def mockCartService(cartCleared: Ref[IO, List[UserId]]): CartService[IO] = new CartServiceStub[IO] {
           override def findLines(auth: UserId): IO[Set[CartLine]] = {
             val lines = auth match {
               case `userId1` =>
@@ -67,7 +70,7 @@ class OrderServiceImplTests extends WordSpec with Matchers {
             lines.pure[IO]
           }
 
-          override def clear(auth: UserId): IO[Unit] = IO.unit //no need to clear in this test
+          override def clear(auth: UserId): IO[Unit] = cartCleared.modify(auth :: _).void
         }
 
         val mockBrickRepository: BricksRepository[IO, IO] = new BricksRepositoryStub[IO] {
@@ -79,18 +82,23 @@ class OrderServiceImplTests extends WordSpec with Matchers {
               BrickId(4) -> Brick("Test brick 4", 50, BrickColor.Green)
             ).get(id).pure[IO]
         }
+
         val program = for {
           publishedRef <- Ref[IO, List[OrderSummary]](Nil)
+          cartCleared  <- Ref[IO, List[UserId]](Nil)
           ordersRef    <- InMemoryOrderRepository.makeRef[IO]
+          publishOrder = (msg: OrderSummary) => sleepRandom *> publishedRef.modify(msg :: _).void
 
-          service: OrderService[IO] = new OrderServiceImpl[IO, IO](mockCartService,
+          service: OrderService[IO] = new OrderServiceImpl[IO, IO](mockCartService(cartCleared),
                                                                    new InMemoryOrderRepository[IO](ordersRef),
                                                                    mockBrickRepository,
-                                                                   summary => publishedRef.modify(summary :: _).void)
+                                                                   publishOrder)
 
           (order1Id, order2Id) <- (service.placeOrder(userId1), service.placeOrder(userId2)).parTupled
 
-          publishedSummaries <- IOUtils.retryUntil(publishedRef.get)(_.size >= 2)(n = 5, waitBetween = 100.millis)
+          _                  <- IO.sleep(500.millis)
+          publishedSummaries <- publishedRef.get
+          clearedCarts       <- cartCleared.get
         } yield {
           //uncertain ordering because orders are made in parallel
           List(order1Id.get, order2Id.get) should contain theSameElementsAs List(OrderId(1), OrderId(2))
@@ -99,25 +107,12 @@ class OrderServiceImplTests extends WordSpec with Matchers {
             OrderSummary(order1Id.get, userId1, 1200),
             OrderSummary(order2Id.get, userId2, 900)
           )
+
+          clearedCarts should contain theSameElementsAs List(userId1, userId2)
         }
 
         program.unsafeRunSync()
       }
     }
-  }
-}
-
-object IOUtils {
-
-  def retryUntil[A](ioa: IO[A])(f: A => Boolean)(n: Int, waitBetween: FiniteDuration): IO[A] = {
-    val timeoutFailure = new TimeoutException(s"Tried $n times every $waitBetween")
-    def go(n: Int): IO[A] = ioa.flatMap {
-      case a if f(a) => a.pure[IO]
-      case _ if n <= 0 =>
-        IO.raiseError(timeoutFailure)
-      case _ => IO.sleep(waitBetween) *> go(n - 1)
-    }
-
-    go(n)
   }
 }

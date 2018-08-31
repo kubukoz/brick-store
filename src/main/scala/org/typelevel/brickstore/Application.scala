@@ -14,7 +14,7 @@ import org.http4s.server.blaze.BlazeBuilder
 import org.typelevel.brickstore.config.DbConfig
 import org.typelevel.brickstore.module.{MainModule, Module}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 
 class Application[F[_]: Par](implicit F: ConcurrentEffect[F]) extends StreamApp[F] {
   private val configF: F[DbConfig] = pureconfig.module.catseffect.loadConfigF[F, DbConfig]("db")
@@ -45,8 +45,11 @@ class Application[F[_]: Par](implicit F: ConcurrentEffect[F]) extends StreamApp[
       transactor <- transactorStream(config)
       _          <- SE(runMigrations(config))
 
-      ec     <- Executors.fixedPool[F](10).map(ExecutionContext.fromExecutorService)
-      module <- SE(MainModule.make(transactor)(F, Par[F], ec))
+      ec <- Executors.fixedPool[F](10).map(ExecutionContext.fromExecutorService)
+      module <- locally {
+        implicit val ecc: ExecutionContextExecutorService = ec
+        SE(MainModule.make(transactor))
+      }
 
       server = BlazeBuilder[F].bindHttp().mountService(mergeServices(module))
 

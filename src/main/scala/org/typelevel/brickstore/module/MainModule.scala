@@ -24,6 +24,7 @@ class MainModule[F[_]: Concurrent: Par] private (transactor: Transactor[F],
   import com.softwaremill.macwire._
   private type CIO[A] = ConnectionIO[A]
 
+  //skip the initial value in the topic
   private val orderStream: Stream[F, OrderSummary] = newOrderTopic.subscribe(100).tail
 
   private val requestAuthenticator: RequestAuthenticator[F] = wire[RequestAuthenticator[F]]
