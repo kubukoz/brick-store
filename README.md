@@ -10,4 +10,6 @@ You can use docker for this:
 
 `docker run -p 5432:5432 postgres:10.2`
 
+Or the local postgres server. If you installed it with `brew`, do `createuser postgres` and everything else should already be there (assuming the service is running).
+
 2. `sbt<enter>run<enter>`
