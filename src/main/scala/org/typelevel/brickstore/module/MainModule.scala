@@ -60,3 +60,4 @@ object MainModule {
     } yield new MainModule[F](transactor, cartRef, ordersRef, newOrderTopic)
   }
 }
+
