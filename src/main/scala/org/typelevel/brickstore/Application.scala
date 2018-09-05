@@ -20,8 +20,8 @@ import org.http4s.server.blaze.BlazeBuilder
 import org.typelevel.brickstore.config.DbConfig
 import org.typelevel.brickstore.module.{MainModule, Module}
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 
 class Application[F[_]: Par](implicit F: ConcurrentEffect[F]) extends StreamApp[F] {
 
