@@ -8,9 +8,13 @@ import org.typelevel.brickstore.entity.{Brick, BrickId}
 trait BricksRepository[F[_], CIO[_]] {
   def insert(brick: Brick): F[BrickId]
   def findById(id: BrickId): F[Option[Brick]]
+  val findBrickIds: fs2.Stream[F, BrickId]
 }
 
 class DoobieBricksRepository[F[_]: Monad](xa: Transactor[F]) extends BricksRepository[F, ConnectionIO] {
+
+  override val findBrickIds: fs2.Stream[F, BrickId] = sql"""select id from bricks""".query[BrickId].stream.transact(xa)
+
   override def insert(brick: Brick): F[BrickId] = {
     val query =
       sql"""insert into bricks(name, price, color)

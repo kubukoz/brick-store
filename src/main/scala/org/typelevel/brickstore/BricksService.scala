@@ -12,6 +12,7 @@ import org.typelevel.brickstore.util.either._
 trait BricksService[F[_]] {
   type LineNumber = Long
   val createEach: Pipe[F, BrickToCreate, ImportResultNel[BrickValidationError, BrickId]]
+  val findBrickIds: fs2.Stream[F, BrickId]
 }
 
 class BricksServiceImpl[F[_]: Applicative, CIO[_]](repository: BricksRepository[F, CIO]) extends BricksService[F] {
@@ -29,6 +30,10 @@ class BricksServiceImpl[F[_]: Applicative, CIO[_]](repository: BricksRepository[
     (validateName, validatePrice)
       .parMapN(Brick(_, _, brickToCreate.color))
   }
+
+
+
+  override  val findBrickIds: fs2.Stream[F, BrickId] = repository.findBrickIds
 
   override val createEach: Pipe[F, BrickToCreate, ImportResultNel[BrickValidationError, BrickId]] =
     _.map(validate).zipWithIndex.map {

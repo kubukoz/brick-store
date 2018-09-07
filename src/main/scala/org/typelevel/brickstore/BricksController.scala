@@ -13,6 +13,11 @@ class BricksController[F[_]: Sync](bricksService: BricksService[F]) extends Http
 
   val service: HttpService[F] = {
     HttpService[F] {
+      case GET -> Root =>
+        val results = bricksService.findBrickIds
+
+        jsonUtils.toJsonArray(results)(Ok.apply(_))
+
       case req @ POST -> Root / "import" =>
         val bodyBricks: Stream[F, BrickToCreate] = req.body.through(decodeByteStream[BrickToCreate])
 
