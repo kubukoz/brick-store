@@ -13,7 +13,7 @@ class OrderController[F[_]: Sync](orderService: OrderService[F],
                                   newOrderStream: Stream[F, OrderSummary])
     extends Http4sDsl[F] {
 
-  val adminService: HttpService[F] = authenticated.admin {
+  private val adminService: HttpService[F] = authenticated.admin {
     AuthedService {
       case GET -> Root / "stream" as _ =>
         val existingStream = orderService.streamExisting
@@ -24,7 +24,7 @@ class OrderController[F[_]: Sync](orderService: OrderService[F],
     }
   }
 
-  val userService: HttpService[F] = authenticated {
+  private val userService: HttpService[F] = authenticated {
     AuthedService {
       case POST -> Root as auth =>
         for {

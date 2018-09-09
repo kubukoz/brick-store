@@ -9,6 +9,8 @@ object either {
     type EitherNelC[EE] = { type λ[A] = EitherNel[EE, A] }
 
     //lambda trick to make the result type conform to F[_] for IDEA
+    //the type of this is equivalent to EitherNel[E, T]
+    //but returning it as a curried type gives IDEA the idea (pun unintended) that it's of kind * -> *
     def toEitherNel[EE >: E]: EitherNelC[E]#λ[T] = either.leftMap(NonEmptyList.one)
   }
 }
