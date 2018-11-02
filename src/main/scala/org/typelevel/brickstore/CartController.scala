@@ -5,13 +5,13 @@ import cats.implicits._
 import io.circe.syntax._
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
-import org.http4s.{AuthedService, HttpService}
+import org.http4s.{AuthedService, HttpRoutes}
 import org.typelevel.brickstore.auth.RequestAuthenticator
 import org.typelevel.brickstore.dto.CartAddRequest
 
 class CartController[F[_]: Sync](cart: CartService[F], authenticated: RequestAuthenticator[F]) extends Http4sDsl[F] {
 
-  val service: HttpService[F] = authenticated {
+  val routes: HttpRoutes[F] = authenticated {
     AuthedService {
       case (req @ POST -> Root / "add") as auth =>
         for {

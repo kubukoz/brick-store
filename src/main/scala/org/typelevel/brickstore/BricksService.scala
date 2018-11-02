@@ -31,9 +31,7 @@ class BricksServiceImpl[F[_]: Applicative, CIO[_]](repository: BricksRepository[
       .parMapN(Brick(_, _, brickToCreate.color))
   }
 
-
-
-  override  val findBrickIds: fs2.Stream[F, BrickId] = repository.findBrickIds
+  override val findBrickIds: fs2.Stream[F, BrickId] = repository.findBrickIds
 
   override val createEach: Pipe[F, BrickToCreate, ImportResultNel[BrickValidationError, BrickId]] =
     _.map(validate).zipWithIndex.map {

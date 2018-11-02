@@ -1,6 +1,6 @@
 package org.typelevel.brickstore.entity
 
-import doobie.util.meta.Meta
+import doobie.util.Meta
 import enumeratum.Circe._
 import enumeratum.EnumEntry.LowerCamelcase
 import enumeratum._

@@ -3,7 +3,7 @@ import cats.effect.Sync
 import cats.implicits._
 import fs2._
 import org.http4s.dsl.Http4sDsl
-import org.http4s.{AuthedService, HttpService}
+import org.http4s.{AuthedService, HttpRoutes}
 import org.typelevel.brickstore.auth.RequestAuthenticator
 import org.typelevel.brickstore.dto.OrderSummary
 import org.typelevel.brickstore.util.http4s.jsonUtils
@@ -13,7 +13,7 @@ class OrderController[F[_]: Sync](orderService: OrderService[F],
                                   newOrderStream: Stream[F, OrderSummary])
     extends Http4sDsl[F] {
 
-  private val adminService: HttpService[F] = authenticated.admin {
+  private val adminRoutes: HttpRoutes[F] = authenticated.admin {
     AuthedService {
       case GET -> Root / "stream" as _ =>
         val existingStream = orderService.streamExisting
@@ -24,7 +24,7 @@ class OrderController[F[_]: Sync](orderService: OrderService[F],
     }
   }
 
-  private val userService: HttpService[F] = authenticated {
+  private val userRoutes: HttpRoutes[F] = authenticated {
     AuthedService {
       case POST -> Root as auth =>
         for {
@@ -37,5 +37,5 @@ class OrderController[F[_]: Sync](orderService: OrderService[F],
     }
   }
 
-  val service: HttpService[F] = adminService <+> userService
+  val routes: HttpRoutes[F] = adminRoutes <+> userRoutes
 }

@@ -1,10 +1,8 @@
 package org.typelevel.brickstore
 
-import cats.MonadError
+import cats.{~>, MonadError}
 import cats.data._
 import cats.implicits._
-import cats.mtl.FunctorLayer
-import cats.mtl.implicits._
 import cats.temp.par._
 import io.scalaland.chimney.dsl._
 import org.typelevel.brickstore.dto.{CartAddError, CartAddRequest, CartBrick}
@@ -24,16 +22,17 @@ class CartServiceImpl[F[_]: Par: MonadError[?[_], Throwable], CIO[_]](cartReposi
     extends CartService[F] {
   private val brickNotFound: Throwable = new Exception("Corrupted data: brick not found")
 
+  private implicit def liftToEither[E]: F ~> EitherT[F, E, ?] = λ[F ~> EitherT[F, E, ?]](EitherT.liftF(_))
+
   override val add: CartAddRequest => UserId => F[EitherNel[CartAddError, Unit]] = req => { auth =>
     doAdd[EitherT[F, NonEmptyList[CartAddError], ?]](req)(auth).value
   }
 
-  private def doAdd[G[_]](request: CartAddRequest)(auth: UserId)(implicit P: Par[G],
-                                                                 ME: MonadError[G, NonEmptyList[CartAddError]],
-                                                                 FL: FunctorLayer[G, F]): G[Unit] = {
+  private def doAdd[G[_]](request: CartAddRequest)(
+    auth: UserId)(implicit P: Par[G], ME: MonadError[G, NonEmptyList[CartAddError]], fToG: F ~> G): G[Unit] = {
     //validations
     val brickExists: G[Unit] =
-      FL.layer(brickRepository.findById(request.brickId))
+      fToG(brickRepository.findById(request.brickId))
         .map(_.toRight[CartAddError](CartAddError.BrickNotFound).toEitherNel)
         .rethrow
         .void
@@ -46,7 +45,7 @@ class CartServiceImpl[F[_]: Par: MonadError[?[_], Throwable], CIO[_]](cartReposi
         .liftTo[G]
         .void
 
-    val saveToCart: G[Unit] = FL.layer(cartRepository.saveToCart(request.transformInto[CartLine])(auth))
+    val saveToCart: G[Unit] = fToG(cartRepository.saveToCart(request.transformInto[CartLine])(auth))
 
     (
       brickExists,

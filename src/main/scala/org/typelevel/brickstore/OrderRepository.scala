@@ -1,10 +1,10 @@
 package org.typelevel.brickstore
 import cats.effect.Sync
+import cats.effect.concurrent.Ref
 import cats.implicits._
 import cats.temp.par._
 import cats.{Monad, Semigroup}
 import fs2.Stream
-import fs2.async.Ref
 import org.typelevel.brickstore.InMemoryOrderRepository.OrdersRef
 import org.typelevel.brickstore.entity.{UserId, _}
 import org.typelevel.brickstore.data.OrderWithLines
@@ -20,7 +20,7 @@ trait OrderRepository[F[_]] {
 
 class InMemoryOrderRepository[F[_]: Monad: Par](ref: OrdersRef[F]) extends OrderRepository[F] {
 
-  private val getNewOrderId: F[OrderId] = ref.get.map(_.value.keySet.map(_.id).maximumOption.combineAll.inc)
+  private val getNewOrderId: OrderState => OrderId = _.value.keySet.map(_.id).maximumOption.combineAll.inc
 
   override def getSummary(orderId: OrderId): F[Option[OrderWithLines]] =
     ref.get
@@ -34,18 +34,22 @@ class InMemoryOrderRepository[F[_]: Monad: Par](ref: OrdersRef[F]) extends Order
       .flatMap(Stream.emits(_))
       .map(OrderWithLines.tupled)
 
-  override def createOrder(auth: UserId): F[OrderId] = getNewOrderId.flatTap { newId =>
-    ref.modify(_ |+| OrderState.emptyOrder(BrickOrder(newId, auth)))
+  override def createOrder(auth: UserId): F[OrderId] = ref.modify { oldState =>
+    val newId = getNewOrderId(oldState)
+
+    val newState = oldState |+| OrderState.emptyOrder(BrickOrder(newId, auth))
+
+    (newState, newId)
   }
 
   override def addOrderLine(orderId: OrderId, line: OrderLine): F[Unit] =
-    ref.modify(_.addToOrder(orderId, line)).void
+    ref.update(_.addToOrder(orderId, line))
 }
 
 object InMemoryOrderRepository {
   type OrdersRef[F[_]] = Ref[F, OrderState]
 
-  def makeRef[F[_]: Sync]: F[OrdersRef[F]] = Ref(OrderState(SortedMap.empty[BrickOrder, List[OrderLine]]))
+  def makeRef[F[_]: Sync]: F[OrdersRef[F]] = Ref.of(OrderState(SortedMap.empty[BrickOrder, List[OrderLine]]))
 }
 
 final case class OrderState private (value: SortedMap[BrickOrder, List[OrderLine]]) {

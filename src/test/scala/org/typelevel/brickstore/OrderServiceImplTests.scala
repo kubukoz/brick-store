@@ -1,17 +1,20 @@
 package org.typelevel.brickstore
 
 import cats.data.NonEmptyList
-import cats.effect.IO
+import cats.effect.{ContextShift, IO, Timer}
+import cats.effect.concurrent.Ref
 import cats.implicits._
-import fs2.async.Ref
 import org.scalatest.{Matchers, WordSpec}
 import org.typelevel.brickstore.dto.OrderSummary
 import org.typelevel.brickstore.entity._
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
 
 class OrderServiceImplTests extends WordSpec with Matchers {
+  implicit val contextShift: ContextShift[IO] = IO.contextShift(global)
+  implicit val timer: Timer[IO]               = IO.timer(global)
+
   "placeOrder" when {
     "the cart is empty" should {
       "not create an order" in {
@@ -23,16 +26,15 @@ class OrderServiceImplTests extends WordSpec with Matchers {
         val userId = UserId(1)
 
         val program = for {
-          publishedRef <- Ref[IO, Int](0)
+          publishedRef <- Ref[IO].of(0)
 
           service: OrderService[IO] = new OrderServiceImpl[IO, IO](mockCartService,
                                                                    new OrderRepositoryStub[IO],
                                                                    null,
-                                                                   _ => publishedRef.modify(_ + 1).void)
+                                                                   _ => publishedRef.update(_ + 1))
 
           result <- service.placeOrder(userId)
 
-          //todo when cats-effect 1.x is released, replace with test clock tick
           _                     <- IO.sleep(200.millis)
           publishedSummaryCount <- publishedRef.get
         } yield {
@@ -75,7 +77,7 @@ class OrderServiceImplTests extends WordSpec with Matchers {
             lines.pure[IO]
           }
 
-          override def clear(auth: UserId): IO[Unit] = cartCleared.modify(auth :: _).void
+          override def clear(auth: UserId): IO[Unit] = cartCleared.update(auth :: _)
         }
 
         val mockBrickRepository: BricksRepository[IO, IO] = new BricksRepositoryStub[IO] {
@@ -89,10 +91,10 @@ class OrderServiceImplTests extends WordSpec with Matchers {
         }
 
         val program = for {
-          publishedRef <- Ref[IO, List[OrderSummary]](Nil)
-          cartCleared  <- Ref[IO, List[UserId]](Nil)
+          publishedRef <- Ref.of[IO, List[OrderSummary]](Nil)
+          cartCleared  <- Ref.of[IO, List[UserId]](Nil)
           ordersRef    <- InMemoryOrderRepository.makeRef[IO]
-          publishOrder = (msg: OrderSummary) => sleepRandom *> publishedRef.modify(msg :: _).void
+          publishOrder = (msg: OrderSummary) => sleepRandom *> publishedRef.update(msg :: _)
 
           service: OrderService[IO] = new OrderServiceImpl[IO, IO](mockCartService(cartCleared),
                                                                    new InMemoryOrderRepository[IO](ordersRef),

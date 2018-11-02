@@ -1,20 +1,18 @@
 package org.typelevel.brickstore.module
 
-import cats.effect.{Concurrent, ConcurrentEffect}
+import cats.effect.Concurrent
 import cats.implicits._
 import cats.temp.par._
 import doobie.free.connection.ConnectionIO
 import doobie.util.transactor.Transactor
 import fs2.Stream
-import fs2.async.mutable.Topic
+import fs2.concurrent.Topic
 import org.typelevel.brickstore.InMemoryCartRepository.CartRef
 import org.typelevel.brickstore.InMemoryOrderRepository.OrdersRef
 import org.typelevel.brickstore._
 import org.typelevel.brickstore.auth.RequestAuthenticator
 import org.typelevel.brickstore.dto.OrderSummary
 import org.typelevel.brickstore.entity.{OrderId, UserId}
-
-import scala.concurrent.ExecutionContext
 
 class MainModule[F[_]: Concurrent: Par] private (transactor: Transactor[F],
                                                  cartRef: CartRef[F],
@@ -49,10 +47,8 @@ class MainModule[F[_]: Concurrent: Par] private (transactor: Transactor[F],
 
 object MainModule {
 
-  def make[F[_]: ConcurrentEffect: Par](transactor: Transactor[F]): F[Module[F]] = {
+  def make[F[_]: Concurrent: Par](transactor: Transactor[F]): F[Module[F]] = {
     //for topic only
-    import ExecutionContext.Implicits.global
-
     for {
       cartRef       <- InMemoryCartRepository.makeRef[F]
       ordersRef     <- InMemoryOrderRepository.makeRef[F]
@@ -60,4 +56,3 @@ object MainModule {
     } yield new MainModule[F](transactor, cartRef, ordersRef, newOrderTopic)
   }
 }
-

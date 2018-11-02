@@ -1,18 +1,10 @@
 package org.typelevel.brickstore
 
-import java.sql.Connection
-
-import cats.data.Kleisli
-import cats.effect.{ConcurrentEffect, IO}
+import cats.effect._
 import cats.implicits._
 import cats.temp.par.Par
-import cats.~>
 import doobie.hikari.HikariTransactor
-import doobie.util.transactor.{Interpreter, Transactor}
-import fs2.Stream.{eval => SE}
-import fs2.{Stream, StreamApp}
-import io.chrisdavenport.linebacker.DualContext
-import io.chrisdavenport.linebacker.contexts.Executors
+import doobie.util.ExecutionContexts
 import org.flywaydb.core.Flyway
 import org.http4s
 import org.http4s.server.Router
@@ -20,50 +12,34 @@ import org.http4s.server.blaze.BlazeBuilder
 import org.typelevel.brickstore.config.DbConfig
 import org.typelevel.brickstore.module.{MainModule, Module}
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 
-class Application[F[_]: Par](implicit F: ConcurrentEffect[F]) extends StreamApp[F] {
+class Application[F[_]: Par: ContextShift: Timer](implicit F: ConcurrentEffect[F]) {
 
   /**
     * loading config from application.conf.
     * it's an effect (reading from classpath resources + decoding to a case class), so F[_]
     */
-  private val configF: F[DbConfig] = pureconfig.module.catseffect.loadConfigF[F, DbConfig]("db")
+  private val configF: F[DbConfig] = {
+    import pureconfig.generic.auto._
+
+    pureconfig.module.catseffect.loadConfigF[F, DbConfig]("db")
+  }
 
   /**
     * Building a Doobie transactor - a pure wrapper over a JDBC connection [pool] (in this case, HikariCP)
     * */
-  private def transactorStream(config: DbConfig): Stream[F, HikariTransactor[F]] = {
-    HikariTransactor.stream("org.postgresql.Driver", config.jdbcUrl, config.user, config.password)
-  }
-
-  /**
-    * Injects the `dualContext.block` wrapper to the transactor
-    * to ensure DB calls block threads only in the thread pool designated for it
-    *
-    * @tparam A0 the transactor's underlying type (in the case of HikariTransactor it's a HikariDataSource)
-    * */
-  private def injectDualContext[A0](dualContext: DualContext[F])(
-    transactor: Transactor.Aux[F, A0]): Transactor.Aux[F, A0] = {
-    def injectTransformation(interpreter: Interpreter[F], trans: F ~> F): Interpreter[F] = {
-      type G[A] = Kleisli[F, Connection, A]
-      interpreter.andThen(λ[G ~> G](_.mapK(trans)))
-    }
-
-    transactor.copy(interpret0 = injectTransformation(transactor.interpret, λ[F ~> F](dualContext.block(_))))
-  }
-
-  /**
-    * Allows executing an F[A] on the blocking thread pool.
-    * called DualContext because it shifts execution to the blocking pool,
-    * and comes back to the default pool afterwards (in this case, implicit - global EC).
-    * */
-  private val buildDualContext: Stream[F, DualContext[F]] = Executors.fixedPool(10).map { blockingExecutor =>
-    DualContext.fromContexts(
-      implicitly[ExecutionContext],
-      ExecutionContext.fromExecutorService(blockingExecutor)
-    )
+  private def transactorF(config: DbConfig): Resource[F, HikariTransactor[F]] = {
+    for {
+      connectEC  <- ExecutionContexts.fixedThreadPool(10)
+      transactEC <- ExecutionContexts.cachedThreadPool
+      transactor <- HikariTransactor.newHikariTransactor("org.postgresql.Driver",
+                                                         config.jdbcUrl,
+                                                         config.user,
+                                                         config.password,
+                                                         connectEC,
+                                                         transactEC)
+    } yield transactor
   }
 
   /**
@@ -71,40 +47,43 @@ class Application[F[_]: Par](implicit F: ConcurrentEffect[F]) extends StreamApp[
     * */
   private def runMigrations(config: DbConfig): F[Unit] =
     F.delay {
-      val flyway = new Flyway()
-      flyway.setDataSource(config.jdbcUrl, config.user, config.password)
-      flyway.migrate()
+      Flyway
+        .configure()
+        .dataSource(config.jdbcUrl, config.user, config.password)
+        .load()
+        .migrate()
     }.void
 
   /**
-    * Merges all the http4s services in the module into one, each with its prefix.
+    * Merges all the http4s routes in the module into one, each with its prefix.
     * */
-  private def mergeServices(module: Module[F]): http4s.HttpService[F] = {
+  private def routes(module: Module[F]): http4s.HttpRoutes[F] = {
     Router(
-      "/bricks" -> module.bricksController.service,
-      "/cart"   -> module.cartController.service,
-      "/order"  -> module.orderController.service
+      "/bricks" -> module.bricksController.routes,
+      "/cart"   -> module.cartController.routes,
+      "/order"  -> module.orderController.routes
     )
   }
 
   /**
-    * StreamApp's `main` equivalent. If you execute `requestShutdown`, the application will gracefully stop.
+    * IOApp's `main` equivalent.
     * */
-  def stream(args: List[String], requestShutdown: F[Unit]): Stream[F, StreamApp.ExitCode] =
-    for {
-      //SE is Stream.eval (see imports)
-      config <- SE(configF)
-      _      <- SE(runMigrations(config))
+  val run: F[Nothing] = {
+    val res = for {
+      config <- Resource.liftF(configF)
+      _      <- Resource.liftF(runMigrations(config))
 
-      dualContext <- buildDualContext
-      transactor  <- transactorStream(config).map(injectDualContext(dualContext))
+      transactor <- transactorF(config)
 
-      module <- SE(MainModule.make(transactor))
+      module <- Resource.liftF(MainModule.make(transactor))
+      //infinite duration so that we don't timeout errors when requesting a streaming endpoint like /order/stream
+      _ <- BlazeBuilder[F].bindHttp().withIdleTimeout(Duration.Inf).mountService(routes(module), "").resource
+    } yield ()
 
-      server = BlazeBuilder[F].bindHttp().mountService(mergeServices(module))
-
-      exitCode <- server.serve
-    } yield exitCode
+    res.use[Nothing](_ => F.never)
+  }
 }
 
-object Main extends Application[IO]
+object Main extends IOApp {
+  def run(args: List[String]): IO[ExitCode] = new Application[IO].run.as(ExitCode.Success)
+}
