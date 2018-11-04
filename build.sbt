@@ -53,7 +53,7 @@ lazy val root = (project in file(".")).settings(
   organization := "org.typelevel",
   name := "brick-store",
   version := "0.0.1-SNAPSHOT",
-  scalaVersion := "2.12.6",
+  scalaVersion := "2.12.7",
   scalacOptions ++= Options.flags,
   libraryDependencies ++= plugins
     .map(compilerPlugin) ++ http4s ++ doobie ++ cats ++ macwire ++ enumeratum ++ pureconfig ++ Seq(logback, chimney)
