@@ -22,7 +22,7 @@ class CartServiceImpl[F[_]: Par: MonadError[?[_], Throwable], CIO[_]](cartReposi
     extends CartService[F] {
   private val brickNotFound: Throwable = new Exception("Corrupted data: brick not found")
 
-  private implicit def liftToEither[E]: F ~> EitherT[F, E, ?] = λ[F ~> EitherT[F, E, ?]](EitherT.liftF(_))
+  private implicit def liftToEither[E]: F ~> EitherT[F, E, ?] = EitherT.liftK
 
   override val add: CartAddRequest => UserId => F[EitherNel[CartAddError, Unit]] = req => { auth =>
     doAdd[EitherT[F, NonEmptyList[CartAddError], ?]](req)(auth).value
