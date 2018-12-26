@@ -1,5 +1,5 @@
 val macroParadise    = ("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)
-val kindProjector    = "org.spire-math" %% "kind-projector" % "0.9.7"
+val kindProjector    = "org.spire-math" %% "kind-projector" % "0.9.9"
 val betterMonadicFor = "com.olegpy" %% "better-monadic-for" % "0.2.4"
 
 val plugins = List(macroParadise, kindProjector, betterMonadicFor)
@@ -27,20 +27,20 @@ val doobie = Seq(
   "org.tpolecat"   %% "doobie-postgres"  % "0.6.0",
   "org.tpolecat"   %% "doobie-hikari"    % "0.6.0",
   "org.tpolecat"   %% "doobie-scalatest" % "0.6.0",
-  "org.postgresql" % "postgresql"        % "42.2.4",
+  "org.postgresql" % "postgresql"        % "42.2.5",
   "org.flywaydb"   % "flyway-core"       % "5.2.4"
 )
 
-val chimney = "io.scalaland" %% "chimney" % "0.2.1"
+val chimney = "io.scalaland" %% "chimney" % "0.3.0"
 
 val pureconfig = Seq(
-  "com.github.pureconfig" %% "pureconfig-cats-effect" % "0.10.0",
-  "com.github.pureconfig" %% "pureconfig-enumeratum"  % "0.10.0",
-  "com.github.pureconfig" %% "pureconfig-generic"     % "0.10.0"
+  "com.github.pureconfig" %% "pureconfig-cats-effect" % "0.10.1",
+  "com.github.pureconfig" %% "pureconfig-enumeratum"  % "0.10.1",
+  "com.github.pureconfig" %% "pureconfig-generic"     % "0.10.1"
 )
 
 val enumeratum = Seq(
-  "com.beachape" %% "enumeratum-circe" % "1.5.13"
+  "com.beachape" %% "enumeratum-circe" % "1.5.18"
 )
 
 val macwire = Seq(
