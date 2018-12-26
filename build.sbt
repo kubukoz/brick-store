@@ -40,7 +40,7 @@ val pureconfig = Seq(
 )
 
 val enumeratum = Seq(
-  "com.beachape" %% "enumeratum-circe" % "1.5.13"
+  "com.beachape" %% "enumeratum-circe" % "1.5.18"
 )
 
 val macwire = Seq(
