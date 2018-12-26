@@ -31,7 +31,7 @@ val doobie = Seq(
   "org.flywaydb"   % "flyway-core"       % "5.2.0"
 )
 
-val chimney = "io.scalaland" %% "chimney" % "0.2.1"
+val chimney = "io.scalaland" %% "chimney" % "0.3.0"
 
 val pureconfig = Seq(
   "com.github.pureconfig" %% "pureconfig-cats-effect" % "0.10.0",
