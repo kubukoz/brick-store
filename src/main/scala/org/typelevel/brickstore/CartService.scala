@@ -7,7 +7,6 @@ import cats.temp.par._
 import io.scalaland.chimney.dsl._
 import org.typelevel.brickstore.dto.{CartAddError, CartAddRequest, CartBrick}
 import org.typelevel.brickstore.entity.{Brick, CartLine, UserId}
-import org.typelevel.brickstore.util.either._
 
 trait CartService[F[_]] {
   val add: CartAddRequest => UserId => F[EitherNel[CartAddError, Unit]]

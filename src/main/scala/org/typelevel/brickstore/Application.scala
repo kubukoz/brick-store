@@ -7,11 +7,11 @@ import doobie.hikari.HikariTransactor
 import doobie.util.ExecutionContexts
 import org.flywaydb.core.Flyway
 import org.http4s
+import org.http4s.implicits._
 import org.http4s.server.Router
-import org.http4s.server.blaze.BlazeBuilder
+import org.http4s.server.blaze.BlazeServerBuilder
 import org.typelevel.brickstore.config.DbConfig
 import org.typelevel.brickstore.module.{MainModule, Module}
-
 import scala.concurrent.duration.Duration
 
 class Application[F[_]: Par: ContextShift: Timer](implicit F: ConcurrentEffect[F]) {
@@ -77,7 +77,11 @@ class Application[F[_]: Par: ContextShift: Timer](implicit F: ConcurrentEffect[F
 
       module <- Resource.liftF(MainModule.make(transactor))
       //infinite duration so that we don't timeout errors when requesting a streaming endpoint like /order/stream
-      _ <- BlazeBuilder[F].bindHttp().withIdleTimeout(Duration.Inf).mountService(routes(module), "").resource
+      _ <- BlazeServerBuilder[F]
+        .bindHttp()
+        .withIdleTimeout(Duration.Inf)
+        .withHttpApp(routes(module).orNotFound)
+        .resource
     } yield ()
 
     res.use[Nothing](_ => F.never)

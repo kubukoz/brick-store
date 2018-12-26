@@ -7,18 +7,18 @@ val plugins = List(macroParadise, kindProjector, betterMonadicFor)
 val logback = "ch.qos.logback" % "logback-classic" % "1.2.3"
 
 val http4s = Seq(
-  "org.http4s" %% "http4s-blaze-server" % "0.20.0-M1",
-  "org.http4s" %% "http4s-circe"        % "0.20.0-M1",
-  "org.http4s" %% "http4s-dsl"          % "0.20.0-M1",
+  "org.http4s" %% "http4s-blaze-server" % "0.20.0-M4",
+  "org.http4s" %% "http4s-circe"        % "0.20.0-M4",
+  "org.http4s" %% "http4s-dsl"          % "0.20.0-M4",
   "io.circe"   %% "circe-derivation"    % "0.10.0-M1" % Compile,
   "io.circe"   %% "circe-fs2"           % "0.10.0"
 )
 
 val cats =
   Seq(
-    "org.typelevel"     %% "cats-core"      % "1.4.0",
+    "org.typelevel"     %% "cats-core"      % "1.5.0",
     "io.chrisdavenport" %% "cats-par"       % "0.2.0",
-    "org.typelevel"     %% "cats-effect"    % "1.0.0",
+    "org.typelevel"     %% "cats-effect"    % "1.1.0",
     "io.chrisdavenport" %% "log4cats-slf4j" % "0.2.0"
   )
 

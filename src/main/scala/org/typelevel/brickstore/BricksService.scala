@@ -7,7 +7,6 @@ import fs2.Pipe
 import org.typelevel.brickstore.dto.ImportResult.ImportResultNel
 import org.typelevel.brickstore.dto.{BrickToCreate, BrickValidationError, ImportResult}
 import org.typelevel.brickstore.entity.{Brick, BrickId}
-import org.typelevel.brickstore.util.either._
 
 trait BricksService[F[_]] {
   type LineNumber = Long
