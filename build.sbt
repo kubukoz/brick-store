@@ -18,7 +18,7 @@ val cats =
   Seq(
     "org.typelevel"     %% "cats-core"      % "1.4.0",
     "io.chrisdavenport" %% "cats-par"       % "0.2.0",
-    "org.typelevel"     %% "cats-effect"    % "1.0.0",
+    "org.typelevel"     %% "cats-effect"    % "1.1.0",
     "io.chrisdavenport" %% "log4cats-slf4j" % "0.2.0"
   )
 
