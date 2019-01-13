@@ -12,8 +12,11 @@ import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.typelevel.brickstore.config.DbConfig
 import org.typelevel.brickstore.module.{MainModule, Module}
+
 import scala.concurrent.duration.Duration
 import com.typesafe.config.ConfigFactory
+import org.flywaydb.core.api.logging.LogFactory
+import org.flywaydb.core.internal.logging.slf4j.Slf4jLogCreator
 
 class Application[F[_]: Par: ContextShift: Timer](implicit F: ConcurrentEffect[F]) {
 
@@ -48,14 +51,15 @@ class Application[F[_]: Par: ContextShift: Timer](implicit F: ConcurrentEffect[F
   /**
     * Runs DB migrations with Flyway.
     * */
-  private def runMigrations(config: DbConfig): F[Unit] =
+  private def runMigrations(config: DbConfig): F[Unit] = {
     F.delay {
       Flyway
-        .configure()
+        .configure(getClass.getClassLoader)
         .dataSource(config.jdbcUrl, config.user, config.password)
         .load()
         .migrate()
     }.void
+  }
 
   /**
     * Merges all the http4s routes in the module into one, each with its prefix.
@@ -90,5 +94,8 @@ class Application[F[_]: Par: ContextShift: Timer](implicit F: ConcurrentEffect[F
 }
 
 object Main extends IOApp {
+  //this line saves the world (workaround for Flyway doing weird stuff with static fields)
+  LogFactory.setLogCreator(new Slf4jLogCreator)
+
   def run(args: List[String]): IO[ExitCode] = new Application[IO].run
 }
