@@ -13,6 +13,7 @@ import org.http4s.server.blaze.BlazeServerBuilder
 import org.typelevel.brickstore.config.DbConfig
 import org.typelevel.brickstore.module.{MainModule, Module}
 import scala.concurrent.duration.Duration
+import com.typesafe.config.ConfigFactory
 
 class Application[F[_]: Par: ContextShift: Timer](implicit F: ConcurrentEffect[F]) {
 
@@ -23,7 +24,9 @@ class Application[F[_]: Par: ContextShift: Timer](implicit F: ConcurrentEffect[F
   private val configF: F[DbConfig] = {
     import pureconfig.generic.auto._
 
-    pureconfig.module.catseffect.loadConfigF[F, DbConfig]("db")
+    F.delay {
+      pureconfig.loadConfigOrThrow[DbConfig](ConfigFactory.load(this.getClass.getClassLoader), "db")
+    }
   }
 
   /**
