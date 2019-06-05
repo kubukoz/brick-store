@@ -5,8 +5,6 @@ import doobie.implicits._
 import doobie.util.transactor.Transactor
 import org.typelevel.brickstore.entity.{Brick, BrickId}
 
-import scala.language.reflectiveCalls
-
 trait BricksRepository[F[_], CIO[_]] {
   def insert(brick: Brick): F[BrickId]
   def findById(id: BrickId): F[Option[Brick]]
