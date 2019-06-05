@@ -1,5 +1,5 @@
 package org.typelevel.brickstore
-import cats.Monad
+import cats.effect.Bracket
 import doobie.free.connection.ConnectionIO
 import doobie.implicits._
 import doobie.util.transactor.Transactor
@@ -11,7 +11,8 @@ trait BricksRepository[F[_], CIO[_]] {
   val findBrickIds: fs2.Stream[F, BrickId]
 }
 
-class DoobieBricksRepository[F[_]: Monad](xa: Transactor[F]) extends BricksRepository[F, ConnectionIO] {
+class DoobieBricksRepository[F[_]: Bracket[?[_], Throwable]](xa: Transactor[F])
+    extends BricksRepository[F, ConnectionIO] {
 
   override val findBrickIds: fs2.Stream[F, BrickId] = sql"""select id from bricks""".query[BrickId].stream.transact(xa)
 

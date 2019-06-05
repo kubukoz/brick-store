@@ -1,6 +1,8 @@
 package org.typelevel.brickstore.util.doobie
+
 import cats.arrow.FunctionK
-import cats.{~>, Monad}
+import cats.effect.Bracket
+import cats.~>
 import doobie.free.connection.ConnectionIO
 import doobie.util.transactor.Transactor
 
@@ -23,7 +25,7 @@ object Transactable {
   }
 }
 
-class TransactorTransactable[F[_]: Monad](xa: Transactor[F]) extends Transactable[F, ConnectionIO] {
+class TransactorTransactable[F[_]: Bracket[?[_], Throwable]](xa: Transactor[F]) extends Transactable[F, ConnectionIO] {
   override val trans: ConnectionIO ~> F                                     = xa.trans
   override val streamTrans: fs2.Stream[ConnectionIO, ?] ~> fs2.Stream[F, ?] = xa.transP
 }
