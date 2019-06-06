@@ -20,4 +20,8 @@ object Now {
 
   def fromClock[F[_]: Clock: Functor]: Now[F] =
     liftF(Clock[F].realTime(TimeUnit.MILLISECONDS).map(Instant.ofEpochMilli))
+
+  object implicits {
+    implicit def fromClock[F[_]: Clock: Functor]: Now[F] = Now.fromClock[F]
+  }
 }

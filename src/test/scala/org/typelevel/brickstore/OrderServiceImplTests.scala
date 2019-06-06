@@ -1,22 +1,23 @@
 package org.typelevel.brickstore
 
-import java.time.{Duration, Instant, LocalDateTime, Month, ZoneOffset}
+import java.time.{LocalDateTime, Month, ZoneOffset}
 
 import cats.data.NonEmptyList
 import cats.effect.concurrent.Ref
-import cats.effect.{ContextShift, IO, Sync, Timer}
+import cats.effect.{ContextShift, IO, Timer}
 import cats.implicits._
-import org.scalatest.{Matchers, WordSpec}
+import fs2.Stream
+import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.typelevel.brickstore.app.util.Now
 import org.typelevel.brickstore.bricks.{Brick, BrickColor, BrickId, BricksRepository}
 import org.typelevel.brickstore.cart.{CartLine, CartService}
 import org.typelevel.brickstore.orders.dto.OrderSummary
 import org.typelevel.brickstore.orders.{InMemoryOrderRepository, OrderId, OrderService, OrderServiceImpl}
 import org.typelevel.brickstore.users.UserId
-import fs2.Stream
+
 import scala.concurrent.ExecutionContext.global
 
-class OrderServiceImplTests extends WordSpec with Matchers {
+class OrderServiceImplTests extends WordSpec with Matchers with OptionValues {
   implicit val contextShift: ContextShift[IO] = IO.contextShift(global)
   implicit val timer: Timer[IO]               = IO.timer(global)
 
@@ -93,11 +94,11 @@ class OrderServiceImplTests extends WordSpec with Matchers {
             ).get(id).pure[IO]
         }
 
-        val noon   = LocalDateTime.of(2019, Month.JUNE, 5, 12, 0, 0).toInstant(ZoneOffset.UTC)
-        val noon01 = noon.plus(Duration.ofMinutes(1))
+        val noon = LocalDateTime.of(2019, Month.JUNE, 5, 12, 0, 0).toInstant(ZoneOffset.UTC)
+
+        implicit val now: Now[IO] = Now.liftF(noon.pure[IO])
 
         val program = for {
-          implicit0(now: Now[IO]) <- NowInstances.addMinute[IO](noon)
 
           publishedRef <- Ref.of[IO, List[OrderSummary]](Nil)
           cartCleared  <- Ref.of[IO, List[UserId]](Nil)
@@ -116,28 +117,17 @@ class OrderServiceImplTests extends WordSpec with Matchers {
           clearedCarts       <- cartCleared.get
         } yield {
           //uncertain ordering because orders are made in parallel
-          List(order1Id.get, order2Id.get) should contain theSameElementsAs List(OrderId(1), OrderId(2))
+          List(order1Id.value, order2Id.value) should contain theSameElementsAs List(OrderId(1), OrderId(2))
 
           publishedSummaries should contain theSameElementsAs List(
             OrderSummary(order1Id.get, userId1, 1200, noon),
-            OrderSummary(order2Id.get, userId2, 900, noon01)
+            OrderSummary(order2Id.get, userId2, 900, noon)
           )
 
           clearedCarts should contain theSameElementsAs List(userId1, userId2)
         }
 
         program.unsafeRunSync()
-      }
-    }
-  }
-}
-
-object NowInstances {
-
-  def addMinute[F[_]: Sync](startTime: Instant): F[Now[F]] = Ref[F].of(startTime).map { ref =>
-    Now.liftF {
-      ref.modify { previous =>
-        (previous.plus(Duration.ofMinutes(1L)), previous)
       }
     }
   }
