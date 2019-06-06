@@ -13,7 +13,7 @@ import org.typelevel.brickstore.cart.{CartLine, CartService}
 import org.typelevel.brickstore.orders.dto.OrderSummary
 import org.typelevel.brickstore.orders.{InMemoryOrderRepository, OrderId, OrderService, OrderServiceImpl}
 import org.typelevel.brickstore.users.UserId
-
+import fs2.Stream
 import scala.concurrent.ExecutionContext.global
 
 class OrderServiceImplTests extends WordSpec with Matchers {
@@ -37,7 +37,8 @@ class OrderServiceImplTests extends WordSpec with Matchers {
           service: OrderService[IO] = new OrderServiceImpl[IO, IO](mockCartService,
                                                                    new OrderRepositoryStub[IO],
                                                                    null,
-                                                                   _ => publishedRef.update(_ + 1))
+                                                                   _ => publishedRef.update(_ + 1),
+                                                                   Stream.empty)
 
           result <- service.placeOrder(userId)
 
@@ -106,7 +107,8 @@ class OrderServiceImplTests extends WordSpec with Matchers {
           service: OrderService[IO] = new OrderServiceImpl[IO, IO](mockCartService(cartCleared),
                                                                    new InMemoryOrderRepository[IO](ordersRef),
                                                                    mockBrickRepository,
-                                                                   publishOrder)
+                                                                   publishOrder,
+                                                                   Stream.empty)
 
           (order1Id, order2Id) <- (service.placeOrder(userId1), service.placeOrder(userId2)).parTupled
 

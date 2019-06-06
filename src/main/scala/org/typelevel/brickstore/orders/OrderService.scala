@@ -1,30 +1,38 @@
 package org.typelevel.brickstore.orders
 
-import java.time.Instant
-
-import cats.MonadError
 import cats.data.NonEmptyList
+import cats.effect.Concurrent
 import cats.implicits._
 import cats.temp.par._
 import io.scalaland.chimney.dsl._
 import fs2._
+import fs2.concurrent.Queue
+import org.typelevel.brickstore.app.util.Now
 import org.typelevel.brickstore.bricks.BricksRepository
 import org.typelevel.brickstore.cart.{CartLine, CartService}
 import org.typelevel.brickstore.orders.dto.OrderSummary
 import org.typelevel.brickstore.users.UserId
 
 trait OrderService[F[_]] {
-  def streamExisting(before: Instant): Stream[F, OrderSummary]
+  def streamAll: Stream[F, OrderSummary]
   def placeOrder(auth: UserId): F[Option[OrderId]]
 }
 
-class OrderServiceImpl[F[_]: MonadError[?[_], Throwable]: Par, CIO[_]](cartService: CartService[F],
-                                                                       orderRepository: OrderRepository[F],
-                                                                       bricksRepository: BricksRepository[F, CIO],
-                                                                       publishOrder: OrderSummary => F[Unit])
+class OrderServiceImpl[F[_]: Concurrent: Now: Par, CIO[_]](cartService: CartService[F],
+                                                           orderRepository: OrderRepository[F],
+                                                           bricksRepository: BricksRepository[F, CIO],
+                                                           publishOrder: OrderSummary => F[Unit],
+                                                           newOrderStream: Stream[F, OrderSummary])
     extends OrderService[F] {
 
-  override def streamExisting(before: Instant): Stream[F, OrderSummary] = orderRepository.streamExisting(before).evalMap(toOrderSummary)
+  override val streamAll: Stream[F, OrderSummary] = {
+    Stream.eval(Now[F].instant).flatMap { now =>
+      Stream.eval(Queue.bounded[F, OrderSummary](100)).flatMap { q =>
+        (orderRepository.streamExisting(now).evalMap(toOrderSummary) concurrently newOrderStream
+          .through(q.enqueue)) ++ q.dequeue.filter(_.placedAt.isAfter(now))
+      }
+    }
+  }
 
   override def placeOrder(auth: UserId): F[Option[OrderId]] = {
     cartService
