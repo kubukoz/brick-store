@@ -1,7 +1,8 @@
 package org.typelevel.brickstore
 import cats.data.{EitherNel, NonEmptyList}
-import org.typelevel.brickstore.dto.{CartAddError, CartAddRequest, CartBrick}
-import org.typelevel.brickstore.entity.{CartLine, UserId}
+import org.typelevel.brickstore.cart.{CartLine, CartService}
+import org.typelevel.brickstore.cart.dto.{CartAddError, CartAddRequest, CartBrick}
+import org.typelevel.brickstore.users.UserId
 
 class CartServiceStub[F[_]] extends CartService[F] {
   val add: CartAddRequest => UserId => F[EitherNel[CartAddError, Unit]] = _ => _ => Stub.apply

@@ -1,5 +1,6 @@
 package org.typelevel.brickstore
-import org.typelevel.brickstore.entity.{Brick, BrickId}
+
+import org.typelevel.brickstore.bricks.{Brick, BrickId, BricksRepository}
 
 class BricksRepositoryStub[F[_]] extends BricksRepository[F, F] {
   override def insert(brick: Brick): F[BrickId]        = Stub.apply

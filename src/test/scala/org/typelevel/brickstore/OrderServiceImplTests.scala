@@ -1,15 +1,17 @@
 package org.typelevel.brickstore
 
 import cats.data.NonEmptyList
+import cats.effect.concurrent.Ref
 import cats.effect.{ContextShift, IO, Timer}
-import cats.effect.concurrent.{Deferred, Ref}
 import cats.implicits._
 import org.scalatest.{Matchers, WordSpec}
-import org.typelevel.brickstore.dto.OrderSummary
-import org.typelevel.brickstore.entity._
+import org.typelevel.brickstore.bricks.{Brick, BrickColor, BrickId, BricksRepository}
+import org.typelevel.brickstore.cart.{CartLine, CartService}
+import org.typelevel.brickstore.orders.dto.OrderSummary
+import org.typelevel.brickstore.orders.{InMemoryOrderRepository, OrderId, OrderService, OrderServiceImpl}
+import org.typelevel.brickstore.users.UserId
 
 import scala.concurrent.ExecutionContext.global
-import scala.concurrent.duration._
 
 class OrderServiceImplTests extends WordSpec with Matchers {
   implicit val contextShift: ContextShift[IO] = IO.contextShift(global)
@@ -79,10 +81,10 @@ class OrderServiceImplTests extends WordSpec with Matchers {
         val mockBrickRepository: BricksRepository[IO, IO] = new BricksRepositoryStub[IO] {
           override def findById(id: BrickId): IO[Option[Brick]] =
             Map(
-              BrickId(1) -> Brick("Test brick 1", 100, BrickColor.Blue),
-              BrickId(2) -> Brick("Test brick 2", 150, BrickColor.Black),
-              BrickId(3) -> Brick("Test brick 3", 200, BrickColor.Red),
-              BrickId(4) -> Brick("Test brick 4", 50, BrickColor.Green)
+              BrickId(1) -> bricks.Brick("Test brick 1", 100, BrickColor.Blue),
+              BrickId(2) -> bricks.Brick("Test brick 2", 150, BrickColor.Black),
+              BrickId(3) -> bricks.Brick("Test brick 3", 200, BrickColor.Red),
+              BrickId(4) -> bricks.Brick("Test brick 4", 50, BrickColor.Green)
             ).get(id).pure[IO]
         }
 

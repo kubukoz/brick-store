@@ -27,14 +27,14 @@ Bricks:
 
 - `GET /bricks` - lists the existing bricks. 
 - `POST /bricks/import` - takes a stream of `org.typelevel.brickstore.dto.BrickToCreate` objects
-(see `input-data.jsonl` file for an example of the format), returns an `org.typelevel.brickstore.dto.ImportResult`
+(see `input-data.jsonl` file for an example of the format), returns an `org.typelevel.brickstore.app.data.ImportResult`
 for each line (for successes - the brick's ID, for failures - a `cats.data.NonEmptyList` of errors).
 
 Cart:
 - `POST /cart/add` - takes a `org.typelevel.brickstore.dto.CartAddRequest` and adds a brick to the cart.
 If any errors occur, a NEL of values of type `org.typelevel.brickstore.dto.CartAddError` will be returned.
 - `GET /cart` - gets the current user's cart (the user is hardcoded to id=1, so everyone is that user ;).
-The result is a non-empty list of `org.typelevel.brickstore.dto.CartBrick`, or 404 if there isn't anything in the cart.
+The result is a non-empty list of `org.typelevel.brickstore.cart.dto.CartBrick`, or 404 if there isn't anything in the cart.
 
 Orders:
 - `POST /order` - creates an order, if the user has a non-empty cart. Fails otherwise.
@@ -77,7 +77,7 @@ Transfer-Encoding: chunked
 ```
 
 Which means 41 results were added, but the one in line 6 wasn't (rightfully, because its name is longer than
-the maximum allowed length, see `org.typelevel.brickstore.BricksServiceImpl#validate`).
+the maximum allowed length, see `org.typelevel.brickstore.bricks.BricksServiceImpl#validate`).
 
 Having added bricks, we can add them to the cart so that we can order them.
 

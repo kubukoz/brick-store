@@ -1,6 +1,6 @@
 package org.typelevel.brickstore
-import org.typelevel.brickstore.data.OrderWithLines
-import org.typelevel.brickstore.entity.{OrderId, OrderLine, UserId}
+import org.typelevel.brickstore.orders.{OrderId, OrderLine, OrderRepository, OrderWithLines}
+import org.typelevel.brickstore.users.UserId
 
 class OrderRepositoryStub[F[_]] extends OrderRepository[F] {
   val streamExisting: fs2.Stream[F, OrderWithLines]            = fs2.Stream.empty
