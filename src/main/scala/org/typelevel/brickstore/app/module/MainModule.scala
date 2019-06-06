@@ -1,6 +1,8 @@
 package org.typelevel.brickstore.app.module
 
-import cats.effect.Concurrent
+import java.time.Instant
+
+import cats.effect.{Clock, Concurrent, Timer}
 import cats.implicits._
 import cats.temp.par._
 import doobie.free.connection.ConnectionIO
@@ -8,6 +10,7 @@ import doobie.util.transactor.Transactor
 import fs2.Stream
 import fs2.concurrent.Topic
 import org.typelevel.brickstore.app.auth.RequestAuthenticator
+import org.typelevel.brickstore.app.util.Now
 import org.typelevel.brickstore.bricks._
 import org.typelevel.brickstore.cart.InMemoryCartRepository.CartRef
 import org.typelevel.brickstore.cart._
@@ -16,14 +19,15 @@ import org.typelevel.brickstore.orders.dto.OrderSummary
 import org.typelevel.brickstore.orders._
 import org.typelevel.brickstore.users.UserId
 
-class MainModule[F[_]: Concurrent: Par] private (transactor: Transactor[F],
-                                                 cartRef: CartRef[F],
-                                                 ordersRef: OrdersRef[F],
-                                                 newOrderTopic: Topic[F, OrderSummary])
+class MainModule[F[_]: Concurrent: Par: Clock] private (transactor: Transactor[F],
+                                                        cartRef: CartRef[F],
+                                                        ordersRef: OrdersRef[F],
+                                                        newOrderTopic: Topic[F, OrderSummary])
     extends Module[F] {
   import com.softwaremill.macwire._
   private type CIO[A] = ConnectionIO[A]
 
+  implicit val now: Now[F] = Now.fromClock
   //skip the initial value in the topic
   private val orderStream: Stream[F, OrderSummary] = newOrderTopic.subscribe(100).tail
 
@@ -49,12 +53,12 @@ class MainModule[F[_]: Concurrent: Par] private (transactor: Transactor[F],
 
 object MainModule {
 
-  def make[F[_]: Concurrent: Par](transactor: Transactor[F]): F[Module[F]] = {
+  def make[F[_]: Concurrent: Par: Timer](transactor: Transactor[F]): F[Module[F]] = {
     //for topic only
     for {
       cartRef       <- InMemoryCartRepository.makeRef[F]
       ordersRef     <- InMemoryOrderRepository.makeRef[F]
-      newOrderTopic <- Topic[F, OrderSummary](OrderSummary(OrderId(0), UserId(0), 0))
+      newOrderTopic <- Topic[F, OrderSummary](OrderSummary(OrderId(0), UserId(0), 0, Instant.EPOCH))
     } yield new MainModule[F](transactor, cartRef, ordersRef, newOrderTopic)
   }
 }

@@ -1,24 +1,27 @@
 package org.typelevel.brickstore.orders
 
+import java.time.Instant
+
 import cats.effect.Sync
 import cats.effect.concurrent.Ref
 import cats.implicits._
 import cats.temp.par._
 import cats.{Monad, Semigroup}
 import fs2.Stream
+import org.typelevel.brickstore.app.util.Now
 import org.typelevel.brickstore.orders.InMemoryOrderRepository.OrdersRef
 import org.typelevel.brickstore.users.UserId
 
 import scala.collection.immutable.SortedMap
 
 trait OrderRepository[F[_]] {
-  val streamExisting: fs2.Stream[F, OrderWithLines]
+  def streamExisting(before: Instant): fs2.Stream[F, OrderWithLines]
   def getSummary(orderId: OrderId): F[Option[OrderWithLines]]
   def createOrder(auth: UserId): F[OrderId]
   def addOrderLine(orderId: OrderId, line: OrderLine): F[Unit]
 }
 
-class InMemoryOrderRepository[F[_]: Monad: Par](ref: OrdersRef[F]) extends OrderRepository[F] {
+class InMemoryOrderRepository[F[_]: Monad: Par: Now](ref: OrdersRef[F]) extends OrderRepository[F] {
 
   private val getNewOrderId: OrderState => OrderId = _.value.keySet.map(_.id).maximumOption.getOrElse(OrderId(0)).inc
 
@@ -27,19 +30,22 @@ class InMemoryOrderRepository[F[_]: Monad: Par](ref: OrdersRef[F]) extends Order
       .map(_.value.find(_._1.id === orderId))
       .map(_.map(OrderWithLines.tupled))
 
-  override val streamExisting: fs2.Stream[F, OrderWithLines] =
+  override def streamExisting(before: Instant): fs2.Stream[F, OrderWithLines] =
     Stream
       .eval(ref.get)
       .map(_.value.toList)
       .flatMap(Stream.emits(_))
+      .filter(_._1.placedAt.isBefore(before))
       .map(OrderWithLines.tupled)
 
-  override def createOrder(auth: UserId): F[OrderId] = ref.modify { oldState =>
-    val newId = getNewOrderId(oldState)
+  override def createOrder(auth: UserId): F[OrderId] = Now[F].instant.flatMap { now =>
+    ref.modify { oldState =>
+      val newId = getNewOrderId(oldState)
 
-    val newState = oldState |+| OrderState.emptyOrder(BrickOrder(newId, auth))
+      val newState = oldState |+| OrderState.emptyOrder(BrickOrder(newId, auth, now))
 
-    (newState, newId)
+      (newState, newId)
+    }
   }
 
   override def addOrderLine(orderId: OrderId, line: OrderLine): F[Unit] =

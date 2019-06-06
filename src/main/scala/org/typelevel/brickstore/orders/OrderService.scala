@@ -1,5 +1,7 @@
 package org.typelevel.brickstore.orders
 
+import java.time.Instant
+
 import cats.MonadError
 import cats.data.NonEmptyList
 import cats.implicits._
@@ -12,7 +14,7 @@ import org.typelevel.brickstore.orders.dto.OrderSummary
 import org.typelevel.brickstore.users.UserId
 
 trait OrderService[F[_]] {
-  val streamExisting: Stream[F, OrderSummary]
+  def streamExisting(before: Instant): Stream[F, OrderSummary]
   def placeOrder(auth: UserId): F[Option[OrderId]]
 }
 
@@ -22,7 +24,7 @@ class OrderServiceImpl[F[_]: MonadError[?[_], Throwable]: Par, CIO[_]](cartServi
                                                                        publishOrder: OrderSummary => F[Unit])
     extends OrderService[F] {
 
-  override val streamExisting: Stream[F, OrderSummary] = orderRepository.streamExisting.evalMap(toOrderSummary)
+  override def streamExisting(before: Instant): Stream[F, OrderSummary] = orderRepository.streamExisting(before).evalMap(toOrderSummary)
 
   override def placeOrder(auth: UserId): F[Option[OrderId]] = {
     cartService

@@ -1,10 +1,13 @@
 package org.typelevel.brickstore
 
+import java.time.{Duration, Instant, LocalDateTime, Month, ZoneOffset}
+
 import cats.data.NonEmptyList
 import cats.effect.concurrent.Ref
-import cats.effect.{ContextShift, IO, Timer}
+import cats.effect.{ContextShift, IO, Sync, Timer}
 import cats.implicits._
 import org.scalatest.{Matchers, WordSpec}
+import org.typelevel.brickstore.app.util.Now
 import org.typelevel.brickstore.bricks.{Brick, BrickColor, BrickId, BricksRepository}
 import org.typelevel.brickstore.cart.{CartLine, CartService}
 import org.typelevel.brickstore.orders.dto.OrderSummary
@@ -20,6 +23,7 @@ class OrderServiceImplTests extends WordSpec with Matchers {
   "placeOrder" when {
     "the cart is empty" should {
       "not create an order" in {
+        implicit val now: Now[IO] = Now.fromClock
 
         val mockCartService: CartService[IO] = new CartServiceStub[IO] {
           override def findLines(auth: UserId): IO[Option[NonEmptyList[CartLine]]] = IO.pure(None)
@@ -88,7 +92,12 @@ class OrderServiceImplTests extends WordSpec with Matchers {
             ).get(id).pure[IO]
         }
 
+        val noon   = LocalDateTime.of(2019, Month.JUNE, 5, 12, 0, 0).toInstant(ZoneOffset.UTC)
+        val noon01 = noon.plus(Duration.ofMinutes(1))
+
         val program = for {
+          implicit0(now: Now[IO]) <- NowInstances.addMinute[IO](noon)
+
           publishedRef <- Ref.of[IO, List[OrderSummary]](Nil)
           cartCleared  <- Ref.of[IO, List[UserId]](Nil)
           ordersRef    <- InMemoryOrderRepository.makeRef[IO]
@@ -108,14 +117,25 @@ class OrderServiceImplTests extends WordSpec with Matchers {
           List(order1Id.get, order2Id.get) should contain theSameElementsAs List(OrderId(1), OrderId(2))
 
           publishedSummaries should contain theSameElementsAs List(
-            OrderSummary(order1Id.get, userId1, 1200),
-            OrderSummary(order2Id.get, userId2, 900)
+            OrderSummary(order1Id.get, userId1, 1200, noon),
+            OrderSummary(order2Id.get, userId2, 900, noon01)
           )
 
           clearedCarts should contain theSameElementsAs List(userId1, userId2)
         }
 
         program.unsafeRunSync()
+      }
+    }
+  }
+}
+
+object NowInstances {
+
+  def addMinute[F[_]: Sync](startTime: Instant): F[Now[F]] = Ref[F].of(startTime).map { ref =>
+    Now.liftF {
+      ref.modify { previous =>
+        (previous.plus(Duration.ofMinutes(1L)), previous)
       }
     }
   }

@@ -1,11 +1,13 @@
 package org.typelevel.brickstore.orders
+import java.time.Instant
+
 import cats.implicits._
 import cats.{Order, Show}
 import io.circe.{Decoder, Encoder}
 import org.typelevel.brickstore.bricks.BrickId
 import org.typelevel.brickstore.users.UserId
 
-case class BrickOrder(id: OrderId, userId: UserId)
+case class BrickOrder(id: OrderId, userId: UserId, placedAt: Instant)
 
 object BrickOrder {
   implicit val order: Order[BrickOrder] = Order.by(_.id)
