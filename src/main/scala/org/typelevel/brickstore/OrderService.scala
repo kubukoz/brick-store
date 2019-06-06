@@ -1,8 +1,7 @@
 package org.typelevel.brickstore
 
+import cats.MonadError
 import cats.data.NonEmptyList
-import cats.effect.Concurrent
-import cats.effect.Concurrent.ops._
 import cats.implicits._
 import cats.temp.par._
 import io.scalaland.chimney.dsl._
@@ -16,10 +15,10 @@ trait OrderService[F[_]] {
   def placeOrder(auth: UserId): F[Option[OrderId]]
 }
 
-class OrderServiceImpl[F[_]: Concurrent: Par, CIO[_]](cartService: CartService[F],
-                                                      orderRepository: OrderRepository[F],
-                                                      bricksRepository: BricksRepository[F, CIO],
-                                                      publishOrder: OrderSummary => F[Unit])
+class OrderServiceImpl[F[_]: MonadError[?[_], Throwable]: Par, CIO[_]](cartService: CartService[F],
+                                                                       orderRepository: OrderRepository[F],
+                                                                       bricksRepository: BricksRepository[F, CIO],
+                                                                       publishOrder: OrderSummary => F[Unit])
     extends OrderService[F] {
 
   override val streamExisting: Stream[F, OrderSummary] = orderRepository.streamExisting.evalMap(toOrderSummary)
@@ -34,8 +33,7 @@ class OrderServiceImpl[F[_]: Concurrent: Par, CIO[_]](cartService: CartService[F
     def publishSummary(orderId: OrderId): F[Unit] = {
       orderRepository
         .getSummary(orderId)
-        .map(_.toRight[Throwable](new Exception("Order not found after saving!")))
-        .rethrow
+        .flatMap(_.liftTo[F](new Exception("Order not found after saving!")))
         .flatMap(toOrderSummary)
         .flatMap(publishOrder)
     }
@@ -48,7 +46,7 @@ class OrderServiceImpl[F[_]: Concurrent: Par, CIO[_]](cartService: CartService[F
 
     createOrder
       .flatTap(orderId => cartLines.traverse(saveLine(orderId, _)))
-      .flatTap(publishSummary(_).start) <* clearCart
+      .flatTap(publishSummary) <* clearCart
   }
 
   private def saveLine(orderId: OrderId, line: CartLine): F[Unit] = {

@@ -1,12 +1,11 @@
 package org.typelevel.brickstore.entity
 
 import cats.implicits._
-import cats.kernel.Monoid
 import cats.{Order, Show}
 import io.circe.{Decoder, Encoder}
 
 case class OrderId(value: Long) extends AnyVal {
-  def inc: OrderId = this |+| OrderId(1)
+  def inc: OrderId = OrderId(value + 1)
 }
 
 object OrderId {
@@ -15,9 +14,4 @@ object OrderId {
 
   implicit val order: Order[OrderId] = Order.by(_.value)
   implicit val show: Show[OrderId]   = _.value.show
-
-  implicit val monoid: Monoid[OrderId] = new Monoid[OrderId] {
-    override def empty: OrderId                           = OrderId(0)
-    override def combine(x: OrderId, y: OrderId): OrderId = OrderId(x.value |+| y.value)
-  }
 }

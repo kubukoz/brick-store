@@ -20,7 +20,7 @@ trait OrderRepository[F[_]] {
 
 class InMemoryOrderRepository[F[_]: Monad: Par](ref: OrdersRef[F]) extends OrderRepository[F] {
 
-  private val getNewOrderId: OrderState => OrderId = _.value.keySet.map(_.id).maximumOption.combineAll.inc
+  private val getNewOrderId: OrderState => OrderId = _.value.keySet.map(_.id).maximumOption.getOrElse(OrderId(0)).inc
 
   override def getSummary(orderId: OrderId): F[Option[OrderWithLines]] =
     ref.get

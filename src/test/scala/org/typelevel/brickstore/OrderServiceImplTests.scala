@@ -2,7 +2,7 @@ package org.typelevel.brickstore
 
 import cats.data.NonEmptyList
 import cats.effect.{ContextShift, IO, Timer}
-import cats.effect.concurrent.Ref
+import cats.effect.concurrent.{Deferred, Ref}
 import cats.implicits._
 import org.scalatest.{Matchers, WordSpec}
 import org.typelevel.brickstore.dto.OrderSummary
@@ -35,7 +35,6 @@ class OrderServiceImplTests extends WordSpec with Matchers {
 
           result <- service.placeOrder(userId)
 
-          _                     <- IO.sleep(200.millis)
           publishedSummaryCount <- publishedRef.get
         } yield {
           result shouldBe empty
@@ -51,11 +50,9 @@ class OrderServiceImplTests extends WordSpec with Matchers {
         val userId1 = UserId(1)
         val userId2 = UserId(14)
 
-        val sleepRandom: IO[Unit] = IO(scala.util.Random.nextInt(2)).map(_.millis * 200) >>= IO.sleep
-
         def mockCartService(cartCleared: Ref[IO, List[UserId]]): CartService[IO] = new CartServiceStub[IO] {
-          override def findLines(auth: UserId): IO[Option[NonEmptyList[CartLine]]] = {
-            val lines = auth match {
+          override def findLines(auth: UserId): IO[Option[NonEmptyList[CartLine]]] =
+            auth match {
               case `userId1` =>
                 NonEmptyList
                   .of(
@@ -63,6 +60,7 @@ class OrderServiceImplTests extends WordSpec with Matchers {
                     CartLine(BrickId(3), 1)
                   )
                   .some
+                  .pure[IO]
               case `userId2` =>
                 NonEmptyList
                   .of(
@@ -70,12 +68,10 @@ class OrderServiceImplTests extends WordSpec with Matchers {
                     CartLine(BrickId(4), 3)
                   )
                   .some
+                  .pure[IO]
 
               case _ => Stub.apply
             }
-
-            lines.pure[IO]
-          }
 
           override def clear(auth: UserId): IO[Unit] = cartCleared.update(auth :: _)
         }
@@ -94,7 +90,7 @@ class OrderServiceImplTests extends WordSpec with Matchers {
           publishedRef <- Ref.of[IO, List[OrderSummary]](Nil)
           cartCleared  <- Ref.of[IO, List[UserId]](Nil)
           ordersRef    <- InMemoryOrderRepository.makeRef[IO]
-          publishOrder = (msg: OrderSummary) => sleepRandom *> publishedRef.update(msg :: _)
+          publishOrder = (msg: OrderSummary) => publishedRef.update(msg :: _)
 
           service: OrderService[IO] = new OrderServiceImpl[IO, IO](mockCartService(cartCleared),
                                                                    new InMemoryOrderRepository[IO](ordersRef),
@@ -103,7 +99,6 @@ class OrderServiceImplTests extends WordSpec with Matchers {
 
           (order1Id, order2Id) <- (service.placeOrder(userId1), service.placeOrder(userId2)).parTupled
 
-          _                  <- IO.sleep(500.millis)
           publishedSummaries <- publishedRef.get
           clearedCarts       <- cartCleared.get
         } yield {
