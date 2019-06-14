@@ -44,9 +44,9 @@ val enumeratum = Seq(
 )
 
 val macwire = Seq(
-  "com.softwaremill.macwire" %% "macros" % "2.3.1" % Provided,
-  "com.softwaremill.macwire" %% "util"   % "2.3.1",
-  "com.softwaremill.macwire" %% "proxy"  % "2.3.1"
+  "com.softwaremill.macwire" %% "macros" % "2.3.3" % Provided,
+  "com.softwaremill.macwire" %% "util"   % "2.3.3",
+  "com.softwaremill.macwire" %% "proxy"  % "2.3.3"
 )
 
 lazy val root = (project in file(".")).settings(
