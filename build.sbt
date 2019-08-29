@@ -28,7 +28,7 @@ val doobie = Seq(
   "org.tpolecat"   %% "doobie-hikari"    % "0.7.0",
   "org.tpolecat"   %% "doobie-scalatest" % "0.7.0",
   "org.postgresql" % "postgresql"        % "42.2.6",
-  "org.flywaydb"   % "flyway-core"       % "6.0.0"
+  "org.flywaydb"   % "flyway-core"       % "6.0.1"
 )
 
 val chimney = "io.scalaland" %% "chimney" % "0.3.2"
