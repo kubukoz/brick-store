@@ -1,5 +1,5 @@
 val macroParadise    = ("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)
-val kindProjector    = "org.typelevel" %% "kind-projector" % "0.10.0"
+val kindProjector    = "org.typelevel" %% "kind-projector" % "0.10.3"
 val betterMonadicFor = "com.olegpy" %% "better-monadic-for" % "0.3.1"
 
 val plugins = List(macroParadise, kindProjector, betterMonadicFor)
