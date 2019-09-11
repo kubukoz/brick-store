@@ -19,7 +19,7 @@ val cats =
     "org.typelevel"     %% "cats-core"      % "1.6.1",
     "io.chrisdavenport" %% "cats-par"       % "0.2.1",
     "org.typelevel"     %% "cats-effect"    % "1.4.0",
-    "io.chrisdavenport" %% "log4cats-slf4j" % "0.3.0"
+    "io.chrisdavenport" %% "log4cats-slf4j" % "1.0.0"
   )
 
 val doobie = Seq(
