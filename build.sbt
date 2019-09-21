@@ -7,10 +7,10 @@ val plugins = List(macroParadise, kindProjector, betterMonadicFor)
 val logback = "ch.qos.logback" % "logback-classic" % "1.2.3"
 
 val http4s = Seq(
-  "org.http4s" %% "http4s-blaze-server" % "0.20.10",
-  "org.http4s" %% "http4s-circe"        % "0.20.10",
-  "org.http4s" %% "http4s-dsl"          % "0.20.10",
-  "io.circe"   %% "circe-derivation"    % "0.12.0-M7" % Compile,
+  "org.http4s" %% "http4s-blaze-server" % "0.20.11",
+  "org.http4s" %% "http4s-circe"        % "0.20.11",
+  "org.http4s" %% "http4s-dsl"          % "0.20.11",
+  "io.circe"   %% "circe-derivation"    % "0.12.0-M5" % Compile,
   "io.circe"   %% "circe-fs2"           % "0.11.0"
 )
 
@@ -27,8 +27,8 @@ val doobie = Seq(
   "org.tpolecat"   %% "doobie-postgres"  % "0.7.0",
   "org.tpolecat"   %% "doobie-hikari"    % "0.7.0",
   "org.tpolecat"   %% "doobie-scalatest" % "0.7.0",
-  "org.postgresql" % "postgresql"        % "42.2.7",
-  "org.flywaydb"   % "flyway-core"       % "6.0.1"
+  "org.postgresql" % "postgresql"        % "42.2.8",
+  "org.flywaydb"   % "flyway-core"       % "6.0.3"
 )
 
 val chimney = "io.scalaland" %% "chimney" % "0.3.2"
