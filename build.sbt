@@ -23,15 +23,15 @@ val cats =
   )
 
 val doobie = Seq(
-  "org.tpolecat"   %% "doobie-core"      % "0.8.4",
-  "org.tpolecat"   %% "doobie-postgres"  % "0.8.4",
-  "org.tpolecat"   %% "doobie-hikari"    % "0.8.4",
-  "org.tpolecat"   %% "doobie-scalatest" % "0.8.4",
+  "org.tpolecat"   %% "doobie-core"      % "0.7.1",
+  "org.tpolecat"   %% "doobie-postgres"  % "0.7.1",
+  "org.tpolecat"   %% "doobie-hikari"    % "0.7.1",
+  "org.tpolecat"   %% "doobie-scalatest" % "0.7.1",
   "org.postgresql" % "postgresql"        % "42.2.8",
-  "org.flywaydb"   % "flyway-core"       % "6.0.4"
+  "org.flywaydb"   % "flyway-core"       % "6.0.6"
 )
 
-val chimney = "io.scalaland" %% "chimney" % "0.3.2"
+val chimney = "io.scalaland" %% "chimney" % "0.3.3"
 
 val pureconfig = Seq(
   "com.github.pureconfig" %% "pureconfig-cats-effect" % "0.11.1",
