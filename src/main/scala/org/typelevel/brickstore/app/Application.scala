@@ -86,7 +86,7 @@ class Application[F[_]: Parallel: ContextShift: Timer](implicit F: ConcurrentEff
         module <- Resource.liftF(MainModule.make(transactor))
         //infinite duration so that we don't timeout errors when requesting a streaming endpoint like /order/stream
         _ <- BlazeServerBuilder[F]
-          .bindHttp(8080, "0.0.0.0")
+          .bindHttp()
           .withIdleTimeout(Duration.Inf)
           .withHttpApp(routes(module).orNotFound)
           .resource
