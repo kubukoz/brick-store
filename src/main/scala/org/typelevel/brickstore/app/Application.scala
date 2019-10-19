@@ -77,23 +77,22 @@ class Application[F[_]: Parallel: ContextShift: Timer](implicit F: ConcurrentEff
   /**
     * IOApp's `main` equivalent.
     * */
-  val run: F[ExitCode] = configF.flatMap { config =>
-    val res: Resource[F, Unit] =
-      for {
-        blocker    <- Blocker[F]
-        transactor <- transactorF(config, blocker)
+  val run: F[ExitCode] = {
+    for {
+      config     <- Resource.liftF(configF)
+      _          <- Resource.liftF(runMigrations(config))
+      blocker    <- Blocker[F]
+      transactor <- transactorF(config, blocker)
 
-        module <- Resource.liftF(MainModule.make(transactor))
-        //infinite duration so that we don't timeout errors when requesting a streaming endpoint like /order/stream
-        _ <- BlazeServerBuilder[F]
-          .bindHttp()
-          .withIdleTimeout(Duration.Inf)
-          .withHttpApp(routes(module).orNotFound)
-          .resource
-      } yield ()
-
-    runMigrations(config) *> res.use(_ => F.never[ExitCode])
-  }
+      module <- Resource.liftF(MainModule.make(transactor))
+      //infinite duration so that we don't timeout errors when requesting a streaming endpoint like /order/stream
+      _ <- BlazeServerBuilder[F]
+        .bindHttp()
+        .withIdleTimeout(Duration.Inf)
+        .withHttpApp(routes(module).orNotFound)
+        .resource
+    } yield ()
+  }.use(_ => F.never[ExitCode])
 }
 
 object Main extends IOApp {
