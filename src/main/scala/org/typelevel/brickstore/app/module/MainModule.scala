@@ -1,8 +1,8 @@
 package org.typelevel.brickstore.app.module
 
 import cats.effect.Concurrent
+import cats.Parallel
 import cats.implicits._
-import cats.temp.par._
 import doobie.free.connection.ConnectionIO
 import doobie.util.transactor.Transactor
 import fs2.Stream
@@ -16,11 +16,12 @@ import org.typelevel.brickstore.orders.dto.OrderSummary
 import org.typelevel.brickstore.orders._
 import org.typelevel.brickstore.users.UserId
 
-class MainModule[F[_]: Concurrent: Par] private (transactor: Transactor[F],
-                                                 cartRef: CartRef[F],
-                                                 ordersRef: OrdersRef[F],
-                                                 newOrderTopic: Topic[F, OrderSummary])
-    extends Module[F] {
+class MainModule[F[_]: Concurrent: Parallel] private (
+  transactor: Transactor[F],
+  cartRef: CartRef[F],
+  ordersRef: OrdersRef[F],
+  newOrderTopic: Topic[F, OrderSummary]
+) extends Module[F] {
   import com.softwaremill.macwire._
   private type CIO[A] = ConnectionIO[A]
 
@@ -49,7 +50,7 @@ class MainModule[F[_]: Concurrent: Par] private (transactor: Transactor[F],
 
 object MainModule {
 
-  def make[F[_]: Concurrent: Par](transactor: Transactor[F]): F[Module[F]] = {
+  def make[F[_]: Concurrent: Parallel](transactor: Transactor[F]): F[Module[F]] = {
     //for topic only
     for {
       cartRef       <- InMemoryCartRepository.makeRef[F]

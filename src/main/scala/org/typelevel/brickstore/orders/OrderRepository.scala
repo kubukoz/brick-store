@@ -3,8 +3,7 @@ package org.typelevel.brickstore.orders
 import cats.effect.Sync
 import cats.effect.concurrent.Ref
 import cats.implicits._
-import cats.temp.par._
-import cats.{Monad, Semigroup}
+import cats.{Monad, Parallel, Semigroup}
 import fs2.Stream
 import org.typelevel.brickstore.orders.InMemoryOrderRepository.OrdersRef
 import org.typelevel.brickstore.users.UserId
@@ -18,7 +17,7 @@ trait OrderRepository[F[_]] {
   def addOrderLine(orderId: OrderId, line: OrderLine): F[Unit]
 }
 
-class InMemoryOrderRepository[F[_]: Monad: Par](ref: OrdersRef[F]) extends OrderRepository[F] {
+class InMemoryOrderRepository[F[_]: Monad: Parallel](ref: OrdersRef[F]) extends OrderRepository[F] {
 
   private val getNewOrderId: OrderState => OrderId = _.value.keySet.map(_.id).maximumOption.getOrElse(OrderId(0)).inc
 
