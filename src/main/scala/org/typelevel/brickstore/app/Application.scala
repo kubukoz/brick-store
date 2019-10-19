@@ -77,7 +77,7 @@ class Application[F[_]: Parallel: ContextShift: Timer](implicit F: ConcurrentEff
   /**
     * IOApp's `main` equivalent.
     * */
-  val run: F[ExitCode] = {
+  val run: F[Nothing] = {
     for {
       config     <- Resource.liftF(configF)
       _          <- Resource.liftF(runMigrations(config))
@@ -92,7 +92,7 @@ class Application[F[_]: Parallel: ContextShift: Timer](implicit F: ConcurrentEff
         .withHttpApp(routes(module).orNotFound)
         .resource
     } yield ()
-  }.use(_ => F.never[ExitCode])
+  }.use[Nothing](_ => F.never)
 }
 
 object Main extends IOApp {
