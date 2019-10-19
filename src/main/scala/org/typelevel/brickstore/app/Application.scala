@@ -79,8 +79,7 @@ class Application[F[_]: Parallel: ContextShift: Timer](implicit F: ConcurrentEff
     * */
   val run: F[Nothing] = {
     for {
-      config     <- Resource.liftF(configF)
-      _          <- Resource.liftF(runMigrations(config))
+      config     <- Resource.liftF(configF).evalTap(runMigrations)
       blocker    <- Blocker[F]
       transactor <- transactorF(config, blocker)
 
