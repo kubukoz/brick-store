@@ -9,15 +9,15 @@ import org.typelevel.brickstore.cart.dto.{CartAddError, CartAddRequest, CartBric
 import org.typelevel.brickstore.users.UserId
 
 trait CartService[F[_]] {
-  val add: CartAddRequest => UserId => F[EitherNel[CartAddError, Unit]]
+  def add: CartAddRequest => UserId => F[EitherNel[CartAddError, Unit]]
   def findBricks(auth: UserId): F[Option[NonEmptyList[CartBrick]]]
   def findLines(auth: UserId): F[Option[NonEmptyList[CartLine]]]
 
   def clear(auth: UserId): F[Unit]
 }
 
-class CartServiceImpl[F[_]: Parallel: MonadError[?[_], Throwable], CIO[_]](
-  cartRepository: CartRepository[F],
+final class CartServiceImpl[F[_]: Parallel: MonadError[?[_], Throwable], CIO[_]](
+  implicit cartRepository: CartRepository[F],
   brickRepository: BricksRepository[F, CIO]
 ) extends CartService[F] {
   private val brickNotFound: Throwable = new Exception("Corrupted data: brick not found")

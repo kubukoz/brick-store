@@ -9,7 +9,8 @@ import org.typelevel.brickstore.app.data.ImportResult.ImportResultNel
 import org.typelevel.brickstore.bricks
 import org.typelevel.brickstore.bricks.dto.{BrickToCreate, BrickValidationError}
 
-class BricksServiceImpl[F[_]: Applicative, CIO[_]](repository: BricksRepository[F, CIO]) extends BricksService[F] {
+final class BricksServiceImpl[F[_]: Applicative, CIO[_]](implicit repository: BricksRepository[F, CIO])
+    extends BricksService[F] {
 
   private def validate(brickToCreate: BrickToCreate): EitherNel[BrickValidationError, Brick] = {
     val validateName =

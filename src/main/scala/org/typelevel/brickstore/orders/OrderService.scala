@@ -16,11 +16,10 @@ trait OrderService[F[_]] {
   def placeOrder(auth: UserId): F[Option[OrderId]]
 }
 
-class OrderServiceImpl[F[_]: MonadError[?[_], Throwable]: Parallel, CIO[_]](
-  cartService: CartService[F],
+class OrderServiceImpl[F[_]: MonadError[?[_], Throwable]: Parallel, CIO[_]](publishOrder: OrderSummary => F[Unit])(
+  implicit cartService: CartService[F],
   orderRepository: OrderRepository[F],
-  bricksRepository: BricksRepository[F, CIO],
-  publishOrder: OrderSummary => F[Unit]
+  bricksRepository: BricksRepository[F, CIO]
 ) extends OrderService[F] {
 
   override val streamExisting: Stream[F, OrderSummary] = orderRepository.streamExisting.evalMap(toOrderSummary)

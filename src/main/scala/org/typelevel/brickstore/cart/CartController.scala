@@ -10,7 +10,8 @@ import org.typelevel.brickstore.app.auth.RequestAuthenticator
 import org.typelevel.brickstore.cart.dto.CartAddRequest
 import org.http4s.AuthedRoutes
 
-class CartController[F[_]: Sync](cart: CartService[F], authenticated: RequestAuthenticator[F]) extends Http4sDsl[F] {
+class CartController[F[_]: Sync](implicit cart: CartService[F], authenticated: RequestAuthenticator[F])
+    extends Http4sDsl[F] {
 
   val routes: HttpRoutes[F] = authenticated {
     AuthedRoutes.of {

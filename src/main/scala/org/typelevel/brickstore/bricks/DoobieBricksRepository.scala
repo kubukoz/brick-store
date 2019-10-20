@@ -5,7 +5,7 @@ import doobie.free.connection.ConnectionIO
 import doobie.implicits._
 import doobie.util.transactor.Transactor
 
-class DoobieBricksRepository[F[_]: Bracket[?[_], Throwable]](xa: Transactor[F])
+final class DoobieBricksRepository[F[_]: Bracket[?[_], Throwable]](implicit xa: Transactor[F])
     extends BricksRepository[F, ConnectionIO] {
 
   override val findBrickIds: fs2.Stream[F, BrickId] = sql"""select id from bricks""".query[BrickId].stream.transact(xa)
@@ -17,6 +17,7 @@ class DoobieBricksRepository[F[_]: Bracket[?[_], Throwable]](xa: Transactor[F])
 
     query.update.withUniqueGeneratedKeys[BrickId]("id").transact(xa)
   }
+
   override def findById(id: BrickId): F[Option[Brick]] = {
     sql"""select name, price, color from bricks where id = $id""".query[Brick].option.transact(xa)
   }

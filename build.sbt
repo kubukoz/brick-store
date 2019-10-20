@@ -1,24 +1,24 @@
-val macroParadise    = ("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)
 val kindProjector    = ("org.typelevel" % "kind-projector" % "0.11.0").cross(CrossVersion.full)
 val betterMonadicFor = "com.olegpy" %% "better-monadic-for" % "0.3.1"
 
-val plugins = List(macroParadise, kindProjector, betterMonadicFor)
+val plugins = List(kindProjector, betterMonadicFor)
 
 val logback = "ch.qos.logback" % "logback-classic" % "1.2.3"
 
 val http4s = Seq(
-  "org.http4s" %% "http4s-blaze-server" % "0.20.11",
-  "org.http4s" %% "http4s-circe"        % "0.20.11",
-  "org.http4s" %% "http4s-dsl"          % "0.20.11",
+  "org.http4s" %% "http4s-blaze-server" % "0.21.0-M5",
+  "org.http4s" %% "http4s-circe"        % "0.21.0-M5",
+  "org.http4s" %% "http4s-dsl"          % "0.21.0-M5",
   "io.circe"   %% "circe-derivation"    % "0.12.0-M7" % Compile,
   "io.circe"   %% "circe-fs2"           % "0.12.0"
 )
 
 val cats =
   Seq(
-    "org.typelevel"     %% "cats-core"      % "2.0.0",
-    "org.typelevel"     %% "cats-effect"    % "2.0.0",
-    "io.chrisdavenport" %% "log4cats-slf4j" % "1.0.1"
+    "org.typelevel"     %% "cats-core"           % "2.0.0",
+    "org.typelevel"     %% "cats-tagless-macros" % "0.10",
+    "org.typelevel"     %% "cats-effect"         % "2.0.0",
+    "io.chrisdavenport" %% "log4cats-slf4j"      % "1.0.1"
   )
 
 val doobie = Seq(
@@ -42,18 +42,11 @@ val enumeratum = Seq(
   "com.beachape" %% "enumeratum-circe" % "1.5.22"
 )
 
-val macwire = Seq(
-  "com.softwaremill.macwire" %% "macros" % "2.3.3" % Provided,
-  "com.softwaremill.macwire" %% "util"   % "2.3.3",
-  "com.softwaremill.macwire" %% "proxy"  % "2.3.3"
-)
-
 lazy val root = (project in file(".")).settings(
   organization := "org.typelevel",
   name := "brick-store",
   version := "0.0.1-SNAPSHOT",
-  scalaVersion := "2.12.10",
-  scalacOptions ++= Options.flags,
+  scalaVersion := "2.13.1",
   libraryDependencies ++= plugins
-    .map(compilerPlugin) ++ http4s ++ doobie ++ cats ++ macwire ++ enumeratum ++ pureconfig ++ Seq(logback, chimney)
+    .map(compilerPlugin) ++ http4s ++ doobie ++ cats ++ enumeratum ++ pureconfig ++ Seq(logback, chimney)
 )

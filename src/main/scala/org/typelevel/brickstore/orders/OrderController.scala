@@ -10,10 +10,10 @@ import org.typelevel.brickstore.app.util.http4s.jsonUtils
 import org.typelevel.brickstore.orders.dto.OrderSummary
 import org.http4s.AuthedRoutes
 
-class OrderController[F[_]: Sync](
+final class OrderController[F[_]: Sync](newOrderStream: Stream[F, OrderSummary])(
+  implicit
   orderService: OrderService[F],
-  authenticated: RequestAuthenticator[F],
-  newOrderStream: Stream[F, OrderSummary]
+  authenticated: RequestAuthenticator[F]
 ) extends Http4sDsl[F] {
 
   private val adminRoutes: HttpRoutes[F] = authenticated.admin {

@@ -17,7 +17,7 @@ trait OrderRepository[F[_]] {
   def addOrderLine(orderId: OrderId, line: OrderLine): F[Unit]
 }
 
-class InMemoryOrderRepository[F[_]: Monad: Parallel](ref: OrdersRef[F]) extends OrderRepository[F] {
+final class InMemoryOrderRepository[F[_]: Monad: Parallel](ref: OrdersRef[F]) extends OrderRepository[F] {
 
   private val getNewOrderId: OrderState => OrderId = _.value.keySet.map(_.id).maximumOption.getOrElse(OrderId(0)).inc
 
