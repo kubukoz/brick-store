@@ -9,13 +9,13 @@ import org.http4s.dsl.Http4sDsl
 import org.typelevel.brickstore.app.util.http4s.jsonUtils
 import org.typelevel.brickstore.bricks.dto.BrickToCreate
 
-class BricksController[F[_]: Sync](bricksService: BricksService[F]) extends Http4sDsl[F] {
+final class BricksController[F[_]: Sync](implicit bricksService: BricksService[F]) extends Http4sDsl[F] {
+
+  private val results = bricksService.findBrickIds
 
   val routes: HttpRoutes[F] = {
     HttpRoutes.of[F] {
       case GET -> Root =>
-        val results = bricksService.findBrickIds
-
         jsonUtils.toJsonArray(results)(Ok.apply(_))
 
       case req @ POST -> Root / "import" =>

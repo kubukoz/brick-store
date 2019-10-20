@@ -18,6 +18,7 @@ import org.typelevel.brickstore.app.module.{MainModule, Module}
 import scala.concurrent.duration.Duration
 import cats.Parallel
 import pureconfig.ConfigSource
+import doobie.util.transactor.Transactor
 
 class Application[F[_]: Parallel: ContextShift: Timer](implicit F: ConcurrentEffect[F]) {
 
@@ -36,7 +37,7 @@ class Application[F[_]: Parallel: ContextShift: Timer](implicit F: ConcurrentEff
   /**
     * Building a Doobie transactor - a pure wrapper over a JDBC connection [pool] (in this case, HikariCP)
     * */
-  private def transactorF(config: DbConfig, blocker: Blocker): Resource[F, HikariTransactor[F]] = {
+  private def transactorResource(config: DbConfig, blocker: Blocker): Resource[F, HikariTransactor[F]] = {
     for {
       connectEC <- ExecutionContexts.fixedThreadPool(10)
       transactor <- HikariTransactor.newHikariTransactor(
@@ -79,11 +80,11 @@ class Application[F[_]: Parallel: ContextShift: Timer](implicit F: ConcurrentEff
     * */
   val run: F[Nothing] = {
     for {
-      config     <- Resource.liftF(configF).evalTap(runMigrations)
-      blocker    <- Blocker[F]
-      transactor <- transactorF(config, blocker)
+      config                               <- Resource.liftF(configF).evalTap(runMigrations)
+      blocker                              <- Blocker[F]
+      implicit0(transactor: Transactor[F]) <- transactorResource(config, blocker)
 
-      module <- Resource.liftF(MainModule.make(transactor))
+      module <- Resource.liftF(MainModule.make[F])
       //infinite duration so that we don't timeout errors when requesting a streaming endpoint like /order/stream
       _ <- BlazeServerBuilder[F]
         .bindHttp()
