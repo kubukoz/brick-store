@@ -1,9 +1,9 @@
 package org.typelevel.brickstore.orders
 
 import cats.MonadError
+import cats.Parallel
 import cats.data.NonEmptyList
 import cats.implicits._
-import cats.temp.par._
 import io.scalaland.chimney.dsl._
 import fs2._
 import org.typelevel.brickstore.bricks.BricksRepository
@@ -16,11 +16,12 @@ trait OrderService[F[_]] {
   def placeOrder(auth: UserId): F[Option[OrderId]]
 }
 
-class OrderServiceImpl[F[_]: MonadError[?[_], Throwable]: Par, CIO[_]](cartService: CartService[F],
-                                                                       orderRepository: OrderRepository[F],
-                                                                       bricksRepository: BricksRepository[F, CIO],
-                                                                       publishOrder: OrderSummary => F[Unit])
-    extends OrderService[F] {
+class OrderServiceImpl[F[_]: MonadError[?[_], Throwable]: Parallel, CIO[_]](
+  cartService: CartService[F],
+  orderRepository: OrderRepository[F],
+  bricksRepository: BricksRepository[F, CIO],
+  publishOrder: OrderSummary => F[Unit]
+) extends OrderService[F] {
 
   override val streamExisting: Stream[F, OrderSummary] = orderRepository.streamExisting.evalMap(toOrderSummary)
 

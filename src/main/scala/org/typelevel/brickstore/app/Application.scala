@@ -2,7 +2,6 @@ package org.typelevel.brickstore.app
 
 import cats.effect._
 import cats.implicits._
-import cats.temp.par.Par
 import com.typesafe.config.ConfigFactory
 import doobie.hikari.HikariTransactor
 import doobie.util.ExecutionContexts
@@ -17,8 +16,10 @@ import org.typelevel.brickstore.app.config.DbConfig
 import org.typelevel.brickstore.app.module.{MainModule, Module}
 
 import scala.concurrent.duration.Duration
+import cats.Parallel
+import pureconfig.ConfigSource
 
-class Application[F[_]: Par: ContextShift: Timer](implicit F: ConcurrentEffect[F]) {
+class Application[F[_]: Parallel: ContextShift: Timer](implicit F: ConcurrentEffect[F]) {
 
   /**
     * loading config from application.conf.
@@ -28,23 +29,24 @@ class Application[F[_]: Par: ContextShift: Timer](implicit F: ConcurrentEffect[F
     import pureconfig.generic.auto._
 
     F.delay {
-      pureconfig.loadConfigOrThrow[DbConfig](ConfigFactory.load(this.getClass.getClassLoader), "db")
+      ConfigSource.fromConfig(ConfigFactory.load(this.getClass.getClassLoader)).at("db").loadOrThrow[DbConfig]
     }
   }
 
   /**
     * Building a Doobie transactor - a pure wrapper over a JDBC connection [pool] (in this case, HikariCP)
     * */
-  private def transactorF(config: DbConfig): Resource[F, HikariTransactor[F]] = {
+  private def transactorF(config: DbConfig, blocker: Blocker): Resource[F, HikariTransactor[F]] = {
     for {
-      connectEC  <- ExecutionContexts.fixedThreadPool(10)
-      transactEC <- ExecutionContexts.cachedThreadPool
-      transactor <- HikariTransactor.newHikariTransactor("org.postgresql.Driver",
-                                                         config.jdbcUrl,
-                                                         config.user,
-                                                         config.password,
-                                                         connectEC,
-                                                         transactEC)
+      connectEC <- ExecutionContexts.fixedThreadPool(10)
+      transactor <- HikariTransactor.newHikariTransactor(
+        "org.postgresql.Driver",
+        config.jdbcUrl,
+        config.user,
+        config.password,
+        connectEC,
+        blocker
+      )
     } yield transactor
   }
 
@@ -75,22 +77,21 @@ class Application[F[_]: Par: ContextShift: Timer](implicit F: ConcurrentEffect[F
   /**
     * IOApp's `main` equivalent.
     * */
-  val run: F[ExitCode] = configF.flatMap { config =>
-    val res: Resource[F, Unit] =
-      for {
-        transactor <- transactorF(config)
+  val run: F[Nothing] = {
+    for {
+      config     <- Resource.liftF(configF).evalTap(runMigrations)
+      blocker    <- Blocker[F]
+      transactor <- transactorF(config, blocker)
 
-        module <- Resource.liftF(MainModule.make(transactor))
-        //infinite duration so that we don't timeout errors when requesting a streaming endpoint like /order/stream
-        _ <- BlazeServerBuilder[F]
-          .bindHttp()
-          .withIdleTimeout(Duration.Inf)
-          .withHttpApp(routes(module).orNotFound)
-          .resource
-      } yield ()
-
-    runMigrations(config) *> res.use(_ => F.never[ExitCode])
-  }
+      module <- Resource.liftF(MainModule.make(transactor))
+      //infinite duration so that we don't timeout errors when requesting a streaming endpoint like /order/stream
+      _ <- BlazeServerBuilder[F]
+        .bindHttp()
+        .withIdleTimeout(Duration.Inf)
+        .withHttpApp(routes(module).orNotFound)
+        .resource
+    } yield ()
+  }.use[Nothing](_ => F.never)
 }
 
 object Main extends IOApp {
