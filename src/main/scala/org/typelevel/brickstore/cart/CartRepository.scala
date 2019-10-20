@@ -17,9 +17,10 @@ trait CartRepository[F[_]] {
 }
 
 class InMemoryCartRepository[F[_]: Functor](ref: CartRef[F]) extends CartRepository[F] {
+
   override def saveToCart(cartLine: CartLine)(auth: UserId): F[Unit] = {
     val newElem = Map(auth -> NonEmptyList.one(cartLine))
-    ref.update(old => (old |+| newElem).mapValues(_.distinct))
+    ref.update(old => (old |+| newElem).fmap(_.distinct))
   }
 
   override def findLines(auth: UserId): F[Option[NonEmptyList[CartLine]]] = ref.get.map(_.get(auth))

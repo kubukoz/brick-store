@@ -1,15 +1,14 @@
-val macroParadise    = ("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)
 val kindProjector    = ("org.typelevel" % "kind-projector" % "0.11.0").cross(CrossVersion.full)
 val betterMonadicFor = "com.olegpy" %% "better-monadic-for" % "0.3.1"
 
-val plugins = List(macroParadise, kindProjector, betterMonadicFor)
+val plugins = List(kindProjector, betterMonadicFor)
 
 val logback = "ch.qos.logback" % "logback-classic" % "1.2.3"
 
 val http4s = Seq(
-  "org.http4s" %% "http4s-blaze-server" % "0.20.11",
-  "org.http4s" %% "http4s-circe"        % "0.20.11",
-  "org.http4s" %% "http4s-dsl"          % "0.20.11",
+  "org.http4s" %% "http4s-blaze-server" % "0.21.0-M5",
+  "org.http4s" %% "http4s-circe"        % "0.21.0-M5",
+  "org.http4s" %% "http4s-dsl"          % "0.21.0-M5",
   "io.circe"   %% "circe-derivation"    % "0.12.0-M7" % Compile,
   "io.circe"   %% "circe-fs2"           % "0.12.0"
 )
@@ -52,8 +51,7 @@ lazy val root = (project in file(".")).settings(
   organization := "org.typelevel",
   name := "brick-store",
   version := "0.0.1-SNAPSHOT",
-  scalaVersion := "2.12.10",
-  scalacOptions ++= Options.flags,
+  scalaVersion := "2.13.1",
   libraryDependencies ++= plugins
     .map(compilerPlugin) ++ http4s ++ doobie ++ cats ++ macwire ++ enumeratum ++ pureconfig ++ Seq(logback, chimney)
 )
