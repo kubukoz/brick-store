@@ -12,6 +12,7 @@ import org.typelevel.brickstore.orders.{InMemoryOrderRepository, OrderId, OrderS
 import org.typelevel.brickstore.users.UserId
 
 import scala.concurrent.ExecutionContext.global
+import org.typelevel.brickstore.orders.OrderRepository
 
 class OrderServiceImplTests extends WordSpec with Matchers {
   implicit val contextShift: ContextShift[IO] = IO.contextShift(global)
@@ -21,19 +22,19 @@ class OrderServiceImplTests extends WordSpec with Matchers {
     "the cart is empty" should {
       "not create an order" in {
 
-        val mockCartService: CartService[IO] = new CartServiceStub[IO] {
+        implicit val mockCartService: CartService[IO] = new CartServiceStub[IO] {
           override def findLines(auth: UserId): IO[Option[NonEmptyList[CartLine]]] = IO.pure(None)
         }
 
         val userId = UserId(1)
 
+        implicit val repo: OrderRepository[IO]            = new OrderRepositoryStub[IO]
+        implicit val bricksRepo: BricksRepository[IO, IO] = null
+
         val program = for {
           publishedRef <- Ref[IO].of(0)
 
-          service: OrderService[IO] = new OrderServiceImpl[IO, IO](mockCartService,
-                                                                   new OrderRepositoryStub[IO],
-                                                                   null,
-                                                                   _ => publishedRef.update(_ + 1))
+          service: OrderService[IO] = new OrderServiceImpl[IO, IO](_ => publishedRef.update(_ + 1))
 
           result <- service.placeOrder(userId)
 
@@ -94,10 +95,13 @@ class OrderServiceImplTests extends WordSpec with Matchers {
           ordersRef    <- InMemoryOrderRepository.makeRef[IO]
           publishOrder = (msg: OrderSummary) => publishedRef.update(msg :: _)
 
-          service: OrderService[IO] = new OrderServiceImpl[IO, IO](mockCartService(cartCleared),
-                                                                   new InMemoryOrderRepository[IO](ordersRef),
-                                                                   mockBrickRepository,
-                                                                   publishOrder)
+          service: OrderService[IO] = new OrderServiceImpl[IO, IO](publishOrder) (
+            IO.ioEffect,
+            IO.ioParallel,
+            mockCartService(cartCleared),
+            new InMemoryOrderRepository[IO](ordersRef),
+            mockBrickRepository
+          )
 
           (order1Id, order2Id) <- (service.placeOrder(userId1), service.placeOrder(userId2)).parTupled
 

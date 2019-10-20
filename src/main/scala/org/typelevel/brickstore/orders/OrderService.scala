@@ -16,7 +16,7 @@ trait OrderService[F[_]] {
   def placeOrder(auth: UserId): F[Option[OrderId]]
 }
 
-class OrderServiceImpl[F[_]: MonadError[?[_], Throwable]: Parallel, CIO[_]](publishOrder: OrderSummary => F[Unit])(
+final class OrderServiceImpl[F[_]: MonadError[?[_], Throwable]: Parallel, CIO[_]](publishOrder: OrderSummary => F[Unit])(
   implicit cartService: CartService[F],
   orderRepository: OrderRepository[F],
   bricksRepository: BricksRepository[F, CIO]
