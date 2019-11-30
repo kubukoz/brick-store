@@ -6,9 +6,9 @@ val plugins = List(kindProjector, betterMonadicFor)
 val logback = "ch.qos.logback" % "logback-classic" % "1.2.3"
 
 val http4s = Seq(
-  "org.http4s" %% "http4s-blaze-server" % "0.21.0-M5",
-  "org.http4s" %% "http4s-circe"        % "0.21.0-M5",
-  "org.http4s" %% "http4s-dsl"          % "0.21.0-M5",
+  "org.http4s" %% "http4s-blaze-server" % "0.21.0-M6",
+  "org.http4s" %% "http4s-circe"        % "0.21.0-M6",
+  "org.http4s" %% "http4s-dsl"          % "0.21.0-M6",
   "io.circe"   %% "circe-derivation"    % "0.12.0-M7" % Compile,
   "io.circe"   %% "circe-fs2"           % "0.12.0"
 )
