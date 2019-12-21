@@ -33,9 +33,9 @@ val doobie = Seq(
 val chimney = "io.scalaland" %% "chimney" % "0.3.5"
 
 val pureconfig = Seq(
-  "com.github.pureconfig" %% "pureconfig-cats-effect" % "0.12.1",
-  "com.github.pureconfig" %% "pureconfig-enumeratum"  % "0.12.1",
-  "com.github.pureconfig" %% "pureconfig-generic"     % "0.12.1"
+  "com.github.pureconfig" %% "pureconfig-cats-effect" % "0.12.2",
+  "com.github.pureconfig" %% "pureconfig-enumeratum"  % "0.12.2",
+  "com.github.pureconfig" %% "pureconfig-generic"     % "0.12.2"
 )
 
 val enumeratum = Seq(
